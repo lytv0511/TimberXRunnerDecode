@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import static android.icu.lang.UProperty.MATH;
+
 import androidx.annotation.NonNull;
 
 import com.acmerobotics.dashboard.canvas.Canvas;
@@ -245,7 +247,13 @@ public final class MecanumDrive {
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
-        localizer = new ThreeDeadWheelLocalizer(hardwareMap, 2000, pose);
+        // Set odometry parameters from StudioOdometry
+        PARAMS.inPerTick = Math.PI * 1.26 / 2000;
+        ThreeDeadWheelLocalizer.PARAMS.par0YTicks = -8.5 / 2;
+        ThreeDeadWheelLocalizer.PARAMS.par1YTicks = 8.5 / 2;
+        ThreeDeadWheelLocalizer.PARAMS.perpXTicks = 0.0;
+
+        localizer = new ThreeDeadWheelLocalizer(hardwareMap, PARAMS.inPerTick, pose);
 
         FlightRecorder.write("MECANUM_PARAMS", PARAMS);
     }
