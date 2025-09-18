@@ -1,99 +1,93 @@
 package org.firstinspires.ftc.teamcode;
 
-import androidx.annotation.NonNull;
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.SequentialAction;
+import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
-import com.acmerobotics.roadrunner.TrajectoryActionBuilder;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+
 import java.util.List;
 
-@Autonomous(name="StudioRunnerAuto", group="Studio")
+@Autonomous(name = "StudioRunnerAuto", group = "Studio")
 public class StudioRunnerAuto extends LinearOpMode {
 
     private StudioAprilTag studioAprilTag;
     private MecanumDrive drive;
 
     @Override
-    public void runOpMode() throws InterruptedException {
-        // Initialize RR drive with odometry
-        Pose2d startPose = new Pose2d(0, 0, 0);
-        drive = new MecanumDrive(hardwareMap, startPose);
+    public void runOpMode() {
+        // Start pose
+        Pose2d initialPose = new Pose2d(0, 0, 0);
+        drive = new MecanumDrive(hardwareMap, initialPose);
 
-        // Initialize AprilTag camera
+        // Init AprilTag
         studioAprilTag = new StudioAprilTag();
         studioAprilTag.init(hardwareMap, "Webcam 1");
 
         telemetry.addLine("Initialized. Waiting for start...");
         telemetry.update();
+
+        // Prebuild trajectories from the *same* starting pose
+        TrajectoryActionBuilder tab1 = drive.actionBuilder(initialPose)
+                .lineToYSplineHeading(33, Math.toRadians(0))
+                .waitSeconds(2)
+                .setTangent(Math.toRadians(90))
+                .lineToY(48)
+                .setTangent(Math.toRadians(0))
+                .lineToX(32)
+                .strafeTo(new Vector2d(44.5, 30))
+                .turn(Math.toRadians(180))
+                .lineToX(47.5)
+                .waitSeconds(3);
+
+        TrajectoryActionBuilder tab2 = drive.actionBuilder(initialPose)
+                .lineToY(37)
+                .setTangent(Math.toRadians(0))
+                .lineToX(18)
+                .waitSeconds(3)
+                .setTangent(Math.toRadians(0))
+                .lineToXSplineHeading(46, Math.toRadians(180))
+                .waitSeconds(3);
+
+        TrajectoryActionBuilder tab3 = drive.actionBuilder(initialPose)
+                .lineToYSplineHeading(33, Math.toRadians(180))
+                .waitSeconds(2)
+                .strafeTo(new Vector2d(46, 30))
+                .waitSeconds(3);
+
+        // Close claw or other init actions if needed
+        // Actions.runBlocking(claw.closeClaw());
+
         waitForStart();
-        if (!opModeIsActive()) return;
+        if (isStopRequested()) return;
 
-        // Step 1: move forward ~24 inches to get in range for detection
-        Pose2d prepPose = drive.getPoseEstimate();
-        TrajectoryActionBuilder prepBuilder = drive.actionBuilder(prepPose)
-                .lineTo(prepPose.position.x + 24 * Math.cos(prepPose.heading.toDouble()),
-                        prepPose.position.y + 24 * Math.sin(prepPose.heading.toDouble()));
-        Actions.runBlocking(prepBuilder.build());
-
-        // Step 2: poll AprilTag until detected
-        int tagId = -1;
-        while (opModeIsActive() && tagId == -1) {
-            tagId = detectTagID();
-            telemetry.addData("Tag ID", tagId);
-            telemetry.update();
-            sleep(50);
-        }
+        // Poll AprilTag once at start
+        int tagId = detectTagID();
         telemetry.addData("Detected Tag ID", tagId);
         telemetry.update();
 
-        // Step 3: build and execute tag-specific trajectory sequence
-        Pose2d currentPose = drive.getPoseEstimate();
-        TrajectoryActionBuilder ab = drive.actionBuilder(currentPose);
-        Action chosenSequence;
-
-        switch (tagId) {
-            case 21: // GPP
-                chosenSequence = ab
-                        .lineTo(currentPose.position.x + 36 * Math.cos(currentPose.heading.toDouble()),
-                                currentPose.position.y + 36 * Math.sin(currentPose.heading.toDouble()))
-                        .strafeTo(new Vector2d(currentPose.position.x + 36, currentPose.position.y + 24))
-                        .turn(Math.toRadians(90))
-                        .build();
-                break;
-            case 22: // PGP
-                chosenSequence = ab
-                        .lineTo(currentPose.position.x - 36 * Math.cos(currentPose.heading.toDouble()),
-                                currentPose.position.y - 36 * Math.sin(currentPose.heading.toDouble()))
-                        .strafeTo(new Vector2d(currentPose.position.x - 36, currentPose.position.y + 24))
-                        .turn(Math.toRadians(-90))
-                        .build();
-                break;
-            case 23: // PPG
-                chosenSequence = ab
-                        .strafeTo(new Vector2d(currentPose.position.x + 36, currentPose.position.y))
-                        .lineTo(currentPose.position.x + 36 * Math.cos(currentPose.heading.toDouble()),
-                                currentPose.position.y + 24 * Math.sin(currentPose.heading.toDouble()))
-                        .turn(Math.toRadians(90))
-                        .build();
-                break;
-            default: // fallback
-                telemetry.addLine("No valid tag detected, running fallback");
-                telemetry.update();
-                chosenSequence = ab.lineTo(currentPose.position.x - 12, currentPose.position.y).build();
-                break;
+        Action trajectoryActionChosen;
+        if (tagId == 21) {
+            trajectoryActionChosen = tab1.build();
+        } else if (tagId == 22) {
+            trajectoryActionChosen = tab2.build();
+        } else if (tagId == 23) {
+            trajectoryActionChosen = tab3.build();
+        } else {
+            // fallback simple move
+            trajectoryActionChosen = drive.actionBuilder(initialPose)
+                    .lineToY(-12)
+                    .build();
         }
 
-        // Step 4: run the chosen trajectory sequence
-        Actions.runBlocking(chosenSequence);
+        // Run trajectory
+        Actions.runBlocking(new SequentialAction(trajectoryActionChosen));
 
-        // Shutdown camera
         studioAprilTag.shutdown();
     }
 
