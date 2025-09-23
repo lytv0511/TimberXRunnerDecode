@@ -32,31 +32,22 @@ public class StudioRunnerAuto extends LinearOpMode {
         telemetry.addLine("Initialized. Waiting for start...");
         telemetry.update();
 
-        // Prebuild trajectories from the *same* starting pose
+        // Prebuild trajectories from the *same* starting pose using valid RR 1.0 conventions:
+        // tab1: move forward (lineToY), then strafe, then turn, then lineToX
         TrajectoryActionBuilder tab1 = drive.actionBuilder(initialPose)
-                .lineToYSplineHeading(33, Math.toRadians(0))
-                .waitSeconds(2)
-                .setTangent(Math.toRadians(90))
-                .lineToY(48)
-                .setTangent(Math.toRadians(0))
-                .lineToX(32)
-                .strafeTo(new Vector2d(44.5, 30))
-                .turn(Math.toRadians(180))
-                .lineToX(47.5)
+                .lineToY(36)                          // Move forward to y=36
+                .strafeTo(new Vector2d(36, 48))       // Strafe to (36,48)
+                .turn(Math.toRadians(90))             // Turn 90 degrees
+                .lineToX(44)                          // Move to x=44 facing current heading
                 .waitSeconds(3);
 
+        // tab2: move to a diagonal point using splineTo
         TrajectoryActionBuilder tab2 = drive.actionBuilder(initialPose)
-                .lineToY(37)
-                .setTangent(Math.toRadians(0))
-                .lineToX(18)
-                .waitSeconds(3)
-                .setTangent(Math.toRadians(0))
-                .lineToXSplineHeading(46, Math.toRadians(180))
+                .splineTo(new Vector2d(18, 37), Math.toRadians(30)) // Spline to diagonal
                 .waitSeconds(3);
 
+        // tab3: strafe to a point and wait
         TrajectoryActionBuilder tab3 = drive.actionBuilder(initialPose)
-                .lineToYSplineHeading(33, Math.toRadians(180))
-                .waitSeconds(2)
                 .strafeTo(new Vector2d(46, 30))
                 .waitSeconds(3);
 
@@ -85,8 +76,32 @@ public class StudioRunnerAuto extends LinearOpMode {
                     .build();
         }
 
+        // Real-time pose telemetry during trajectory execution
+        final boolean[] running = {true};
+        Thread telemetryThread = new Thread(() -> {
+            while (running[0] && !isStopRequested()) {
+                Pose2d pose = drive.localizer.getPose();
+                telemetry.addData("X (in)", pose.position.x);
+                telemetry.addData("Y (in)", pose.position.y);
+                telemetry.addData("Heading (deg)", pose.heading);
+                telemetry.update();
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+        telemetryThread.start();
+
         // Run trajectory
         Actions.runBlocking(new SequentialAction(trajectoryActionChosen));
+
+        // Stop telemetry after trajectory finishes
+        running[0] = false;
+        try {
+            telemetryThread.join();
+        } catch (InterruptedException ignored) {}
 
         studioAprilTag.shutdown();
     }
@@ -95,5 +110,13 @@ public class StudioRunnerAuto extends LinearOpMode {
         List<AprilTagDetection> detections = studioAprilTag.getDetections();
         if (!detections.isEmpty()) return detections.get(0).id;
         return -1;
+    }
+    /**
+     * Converts a raw encoder rotational value from radians to degrees.
+     * @param rotationRadians the rotation in radians
+     * @return the rotation in degrees
+     */
+    private double encoderRadiansToDegrees(double rotationRadians) {
+        return Math.toDegrees(rotationRadians);
     }
 }
