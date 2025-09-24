@@ -59,14 +59,10 @@ public class StudioTestrunRunnerAuto extends LinearOpMode {
         Pose2d currentPose = drive.localizer.getPose();
         if (tagId == 21) {
             trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .splineToConstantHeading(new Vector2d(66, 0), Math.toRadians(-90))
+                    .splineToConstantHeading(new Vector2d(71, 0), Math.toRadians(-270))
                     .lineToY(-48)
                     .waitSeconds(0.5)
                     .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
-//                    .lineToX(103)
-//                    .turn(-90)
-//                    .lineToX(32)
-//                    .turn(-62)
                     .build();
         } else if (tagId == 22) {
             trajectoryActionChosen = drive.actionBuilder(currentPose)
@@ -84,7 +80,6 @@ public class StudioTestrunRunnerAuto extends LinearOpMode {
         }
         Actions.runBlocking(
                 drive.actionBuilder(new Pose2d(0, 0, 0))
-//                    .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
                         .lineToX(103)
                         .turn(Math.toRadians(-90))
                         .lineToY(-32)
