@@ -27,7 +27,7 @@ public class StudioRunnerAuto extends LinearOpMode {
         telemetry.addLine("Initialized. Waiting for start...");
         telemetry.update();
 
-        int tagId = -1;
+        int tagId;
         while (!isStarted() && !isStopRequested()) {
             List<AprilTagDetection> detections = studioAprilTag.getDetections();
             if (!detections.isEmpty()) {
