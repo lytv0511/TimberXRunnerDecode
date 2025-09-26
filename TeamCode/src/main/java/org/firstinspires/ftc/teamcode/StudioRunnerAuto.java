@@ -59,7 +59,7 @@ public class StudioRunnerAuto extends LinearOpMode {
         Pose2d currentPose = drive.localizer.getPose();
         if (tagId == 21) {
             trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .splineToConstantHeading(new Vector2d(71, 0), Math.toRadians(-270))
+                    .splineTo(new Vector2d(71, 0), Math.toRadians(-90))
                     .lineToY(-48)
                     .waitSeconds(0.5)
                     .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
@@ -78,13 +78,15 @@ public class StudioRunnerAuto extends LinearOpMode {
                     .waitSeconds(0.1)
                     .build();
         }
+
         Actions.runBlocking(
-                drive.actionBuilder(new Pose2d(0, 0, 0))
+                drive.actionBuilder(currentPose)
                         .lineToX(103)
                         .turn(Math.toRadians(-90))
                         .lineToY(-32)
                         .turn(Math.toRadians(28))
-                        .build());
+                        .build()
+        );
         sleep(5000);
         Actions.runBlocking(trajectoryActionChosen);
 
