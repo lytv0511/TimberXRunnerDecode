@@ -62,7 +62,7 @@ public class SensorGoBildaPinpoint extends OpMode {
     public void loop() {
         telemetry.addLine("Push your robot around to see it track");
         telemetry.addLine("Press A to reset the position");
-        if(gamepad1.a){
+        if(gamepad1.x){
             // You could use readings from April Tags here to give a new known position to the pinpoint
             pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, 0, 0, AngleUnit.DEGREES, 0));
         }

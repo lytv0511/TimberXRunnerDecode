@@ -102,7 +102,7 @@ public class RobotTeleopMecanumFieldRelativeDrive extends OpMode {
 
         // If you press the A button, then you reset the Yaw to be zero from the way
         // the robot is currently pointing
-        if (gamepad1.a) {
+        if (gamepad1.x) {
             imu.resetYaw();
         }
         // If you press the left bumper, you get a drive from the point of view of the robot

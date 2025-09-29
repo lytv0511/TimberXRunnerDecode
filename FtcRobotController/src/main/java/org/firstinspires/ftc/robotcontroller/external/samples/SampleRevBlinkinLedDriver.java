@@ -123,7 +123,7 @@ public class SampleRevBlinkinLedDriver extends OpMode {
             return;
         }
 
-        if (gamepad1.a) {
+        if (gamepad1.x) {
             setDisplayKind(DisplayKind.MANUAL);
             gamepadRateLimit.reset();
         } else if (gamepad1.b) {

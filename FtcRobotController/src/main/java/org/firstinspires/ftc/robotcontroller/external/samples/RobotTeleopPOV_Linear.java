@@ -141,7 +141,7 @@ public class RobotTeleopPOV_Linear extends LinearOpMode {
             // Use gamepad buttons to move arm up (Y) and down (A)
             if (gamepad1.y)
                 leftArm.setPower(ARM_UP_POWER);
-            else if (gamepad1.a)
+            else if (gamepad1.x)
                 leftArm.setPower(ARM_DOWN_POWER);
             else
                 leftArm.setPower(0.0);

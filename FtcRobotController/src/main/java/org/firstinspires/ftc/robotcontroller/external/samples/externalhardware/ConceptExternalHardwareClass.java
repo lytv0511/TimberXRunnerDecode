@@ -115,7 +115,7 @@ public class ConceptExternalHardwareClass extends LinearOpMode {
             // Use the MOTOR constants defined in RobotHardware class.
             if (gamepad1.y)
                 arm = robot.ARM_UP_POWER;
-            else if (gamepad1.a)
+            else if (gamepad1.x)
                 arm = robot.ARM_DOWN_POWER;
             else
                 arm = 0;

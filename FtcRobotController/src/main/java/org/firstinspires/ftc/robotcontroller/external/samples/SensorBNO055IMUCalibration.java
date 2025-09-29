@@ -147,7 +147,7 @@ public class SensorBNO055IMUCalibration extends LinearOpMode
 
         while (opModeIsActive()) {
 
-            if (gamepad1.a) {
+            if (gamepad1.x) {
 
                 // Get the calibration data
                 BNO055IMU.CalibrationData calibrationData = imu.readCalibrationData();
@@ -163,7 +163,7 @@ public class SensorBNO055IMUCalibration extends LinearOpMode
                 telemetry.log().add("saved to '%s'", filename);
 
                 // Wait for the button to be released
-                while (gamepad1.a) {
+                while (gamepad1.x) {
                     telemetry.update();
                     idle();
                 }

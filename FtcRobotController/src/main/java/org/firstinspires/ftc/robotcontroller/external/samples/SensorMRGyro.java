@@ -105,7 +105,7 @@ public class SensorMRGyro extends LinearOpMode {
     while (opModeIsActive())  {
 
       // If the A and B buttons are pressed just now, reset Z heading.
-      curResetState = (gamepad1.a && gamepad1.b);
+      curResetState = (gamepad1.x && gamepad1.b);
       if (curResetState && !lastResetState) {
         modernRoboticsI2cGyro.resetZAxisIntegrator();
       }

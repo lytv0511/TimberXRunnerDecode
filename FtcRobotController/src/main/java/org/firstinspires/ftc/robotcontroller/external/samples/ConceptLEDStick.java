@@ -92,7 +92,7 @@ public class ConceptLEDStick extends OpMode {
             int[] ledColors = {Color.RED, Color.YELLOW, Color.RED, Color.YELLOW, Color.RED,
                     Color.YELLOW, Color.RED, Color.YELLOW, Color.RED, Color.YELLOW};
             ledStick.setColors(ledColors);
-        } else if (gamepad1.a) {
+        } else if (gamepad1.x) {
             ledStick.setColor(Color.BLUE);
         } else if (gamepad1.b) {
             ledStick.setColor(Color.RED);

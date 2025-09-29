@@ -123,7 +123,7 @@ public class ConceptGamepadRumble extends LinearOpMode
         while (opModeIsActive())
         {
             // Read and save the current gamepad button states.
-            boolean currentA = gamepad1.a ;
+            boolean currentA = gamepad1.x ;
             boolean currentLB = gamepad1.left_bumper ;
 
             // Display the current Rumble status.  Just for interest.

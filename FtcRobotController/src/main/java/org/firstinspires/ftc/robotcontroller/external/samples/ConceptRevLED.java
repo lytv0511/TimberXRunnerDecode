@@ -64,7 +64,7 @@ public class ConceptRevLED extends OpMode {
 
     @Override
     public void loop() {
-        if (gamepad1.a) {
+        if (gamepad1.x) {
             frontLED_red.on();
         } else {
             frontLED_red.off();
