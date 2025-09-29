@@ -67,8 +67,8 @@ public class AimBotPro extends OpMode {
 
             if (tag != null && tag.id == GOAL_TAG_ID && tag.robotPose != null) {
                 double yawError = tag.robotPose.getOrientation().getYaw(AngleUnit.DEGREES);
-                double xError = tag.robotPose.getPosition().x; // inches
-                double distance = tag.robotPose.getPosition().y; // forward distance (inches)
+                double xError = tag.robotPose.getPosition().x;
+                double distance = tag.robotPose.getPosition().y;
 
                 double turnPower = Range.clip(yawError * kP_turn, -maxPower, maxPower);
                 double strafePower = Range.clip(xError * kP_strafe, -maxPower, maxPower);
