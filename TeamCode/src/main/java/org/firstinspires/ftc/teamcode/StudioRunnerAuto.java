@@ -13,6 +13,10 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.robotcore.external.navigation.Position;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+
 import java.util.List;
 
 @Autonomous(name="StudioRunnerAuto", group = "Autonomous")
@@ -30,9 +34,24 @@ public class StudioRunnerAuto extends LinearOpMode {
         int tagId;
         while (!isStarted() && !isStopRequested()) {
             List<AprilTagDetection> detections = studioAprilTag.getDetections();
+            studioAprilTag.updatePose();
+
             if (!detections.isEmpty()) {
                 tagId = detections.get(0).id;
                 telemetry.addData("Detected Tag ID", tagId);
+
+                Position pos = studioAprilTag.getRobotPosition();
+                YawPitchRollAngles ori = studioAprilTag.getRobotOrientation();
+
+                if (pos != null && ori != null) {
+                    telemetry.addData("Robot X", "%.2f", pos.x);
+                    telemetry.addData("Robot Y", "%.2f", pos.y);
+                    telemetry.addData("Robot Z", "%.2f", pos.z);
+                    telemetry.addData("Robot Yaw", "%.2f", ori.getYaw(AngleUnit.DEGREES));
+                    telemetry.addData("Robot Pitch", "%.2f", ori.getPitch(AngleUnit.DEGREES));
+                    telemetry.addData("Robot Roll", "%.2f", ori.getRoll(AngleUnit.DEGREES));
+                }
+
             } else {
                 telemetry.addLine("No tag detected");
             }
@@ -53,6 +72,22 @@ public class StudioRunnerAuto extends LinearOpMode {
 
         tagId = detectTagID();
         telemetry.addData("Detected Tag ID after scanning", tagId);
+
+        String tagName = studioAprilTag.getTagName();
+        if (tagName != null) {
+            telemetry.addData("Tag Name", tagName);
+        }
+
+        Position pos = studioAprilTag.getRobotPosition();
+        YawPitchRollAngles ori = studioAprilTag.getRobotOrientation();
+        if (pos != null && ori != null) {
+            telemetry.addData("Robot X", "%.2f", pos.x);
+            telemetry.addData("Robot Y", "%.2f", pos.y);
+            telemetry.addData("Robot Z", "%.2f", pos.z);
+            telemetry.addData("Robot Yaw", "%.2f", ori.getYaw(AngleUnit.DEGREES));
+            telemetry.addData("Robot Pitch", "%.2f", ori.getPitch(AngleUnit.DEGREES));
+            telemetry.addData("Robot Roll", "%.2f", ori.getRoll(AngleUnit.DEGREES));
+        }
         telemetry.update();
 
         Action trajectoryActionChosen;
