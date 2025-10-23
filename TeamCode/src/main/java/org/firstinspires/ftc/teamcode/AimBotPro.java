@@ -3,7 +3,10 @@ package org.firstinspires.ftc.teamcode;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
@@ -15,8 +18,10 @@ public class AimBotPro extends OpMode {
     private MecanumDrive drive;
     private StudioAprilTag studioAprilTag;
 
+    private DcMotorEx linearRight, linearLeft;
     private DcMotorEx launcherRight, launcherLeft;
-    private Servo rampServo;
+    private Servo sortingWheel, rampServo, gateServo;
+    private CRServo intake1, intake2;
 
     private boolean aimingMode = false;
     private boolean lastXToggle = false;
@@ -48,6 +53,18 @@ public class AimBotPro extends OpMode {
         launcherLeft.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
         launcherRight.setDirection(DcMotorEx.Direction.FORWARD);
         launcherLeft.setDirection(DcMotorEx.Direction.REVERSE);
+
+        linearRight = hardwareMap.get(DcMotorEx.class, "linearRight");
+        linearLeft = hardwareMap.get(DcMotorEx.class, "linearLeft");
+        linearRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        linearLeft.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        linearRight.setDirection(DcMotorEx.Direction.FORWARD);
+        linearLeft.setDirection(DcMotorEx.Direction.REVERSE);
+
+        sortingWheel = hardwareMap.get(Servo.class, "sortingWheel");
+        gateServo = hardwareMap.get(Servo.class, "gateServo");
+        intake1 = hardwareMap.get(CRServo.class, "intake1");
+        intake2 = hardwareMap.get(CRServo.class, "intake2");
 
         // Init ramp servo (optional, if present)
         try {
