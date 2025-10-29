@@ -21,174 +21,50 @@ import com.qualcomm.robotcore.hardware.Servo;
 @Config
 @Autonomous(name = "StudioRunnerConceptAuto", group = "Autonomous")
 public class StudioRunnerConceptAuto extends LinearOpMode {
-//    public class Lift {
-//        private DcMotorEx lift;
-//
-//        public Lift(HardwareMap hardwareMap) {
-//            lift = hardwareMap.get(DcMotorEx.class, "liftMotor");
-//            lift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-//            lift.setDirection(DcMotorSimple.Direction.FORWARD);
-//        }
-//
-//        public class LiftUp implements Action {
-//            private boolean initialized = false;
-//
-//            @Override
-//            public boolean run(@NonNull TelemetryPacket packet) {
-//                if (!initialized) {
-//                    lift.setPower(0.8);
-//                    initialized = true;
-//                }
-//
-//                double pos = lift.getCurrentPosition();
-//                packet.put("liftPos", pos);
-//                if (pos < 3000.0) {
-//                    return true;
-//                } else {
-//                    lift.setPower(0);
-//                    return false;
-//                }
-//            }
-//        }
-//        public Action liftUp() {
-//            return new LiftUp();
-//        }
-//
-//        public class LiftDown implements Action {
-//            private boolean initialized = false;
-//
-//            @Override
-//            public boolean run(@NonNull TelemetryPacket packet) {
-//                if (!initialized) {
-//                    lift.setPower(-0.8);
-//                    initialized = true;
-//                }
-//
-//                double pos = lift.getCurrentPosition();
-//                packet.put("liftPos", pos);
-//                if (pos > 100.0) {
-//                    return true;
-//                } else {
-//                    lift.setPower(0);
-//                    return false;
-//                }
-//            }
-//        }
-//        public Action liftDown(){
-//            return new LiftDown();
-//        }
-//    }
-
-//    public class Claw {
-//        private Servo claw;
-//
-//        public Claw(HardwareMap hardwareMap) {
-//            claw = hardwareMap.get(Servo.class, "claw");
-//        }
-//
-//        public class CloseClaw implements Action {
-//            @Override
-//            public boolean run(@NonNull TelemetryPacket packet) {
-//                claw.setPosition(0.55);
-//                return false;
-//            }
-//        }
-//        public Action closeClaw() {
-//            return new CloseClaw();
-//        }
-//
-//        public class OpenClaw implements Action {
-//            @Override
-//            public boolean run(@NonNull TelemetryPacket packet) {
-//                claw.setPosition(1.0);
-//                return false;
-//            }
-//        }
-//        public Action openClaw() {
-//            return new OpenClaw();
-//        }
-//    }
 
     @Override
     public void runOpMode() {
-        Pose2d initialPose = new Pose2d(0.0, 0.0, Math.toRadians(0));
-        MecanumDrive drive = new MecanumDrive(hardwareMap, initialPose);
-//        Claw claw = new Claw(hardwareMap);
-//        Lift lift = new Lift(hardwareMap);
+        telemetry.addLine("Initializing AprilTag...");
+        telemetry.update();
 
-        // vision here that outputs position
-        int visionOutputPosition = 1;
+        StudioAprilTag aprilTag = new StudioAprilTag();
+        aprilTag.init(hardwareMap, "Webcam 1");
 
-        TrajectoryActionBuilder tab1 = drive.actionBuilder(initialPose)
-                .setTangent(Math.toRadians(90))
-                .lineToYSplineHeading(33, Math.toRadians(0))
-                .waitSeconds(2)
-                .setTangent(Math.toRadians(90))
-                .lineToY(48)
-                .setTangent(Math.toRadians(0))
-                .lineToX(32)
-                .strafeTo(new Vector2d(44.5, 30))
-                .turn(Math.toRadians(180))
-                .lineToX(47.5)
-                .waitSeconds(3);
-        TrajectoryActionBuilder tab = drive.actionBuilder(initialPose)
-                .lineToX(27) // forward 27
-                .turn(Math.toRadians(-90)) // turn 90° clockwise
-                .lineToY(-48) // forward 48 in new heading
-                .turn(Math.toRadians(90)) // turn back to original heading
-                .lineToX(72); // forward 72 along original heading
-        TrajectoryActionBuilder tab2 = drive.actionBuilder(initialPose)
-                .setTangent(Math.toRadians(90))
-                .lineToY(37)
-                .setTangent(Math.toRadians(0))
-                .lineToX(18)
-                .waitSeconds(3)
-                .setTangent(Math.toRadians(0))
-                .lineToXSplineHeading(46, Math.toRadians(180))
-                .waitSeconds(3);
-        TrajectoryActionBuilder tab3 = drive.actionBuilder(initialPose)
-                .lineToXSplineHeading(33, Math.toRadians(180))
-                .waitSeconds(2)
-                .strafeTo(new Vector2d(46, 30))
-                .waitSeconds(3);
-        Action trajectoryActionCloseOut = tab1.endTrajectory().fresh()
-                .strafeTo(new Vector2d(48, 12))
-                .build();
+        telemetry.addLine("AprilTag Initialized. Waiting for start...");
+        telemetry.update();
 
-        // actions that need to happen on init; for instance, a claw tightening.
-//        Actions.runBlocking(claw.closeClaw());
+        waitForStart();
+        if (isStopRequested()) {
+            aprilTag.shutdown();
+            return;
+        }
 
+        while (opModeIsActive()) {
+            aprilTag.updatePose();
 
-        while (!isStopRequested() && !opModeIsActive()) {
-            int position = visionOutputPosition;
-            telemetry.addData("Position during Init", position);
+            int tagId = aprilTag.getTagId();
+            String tagName = aprilTag.getTagName();
+            double yaw = aprilTag.getYawDegrees();
+            org.firstinspires.ftc.robotcore.external.navigation.Position pos = aprilTag.getRobotPosition();
+
+            telemetry.addLine("=== AprilTag Detection ===");
+            if (tagId != -1) {
+                telemetry.addData("Tag ID", tagId);
+                telemetry.addData("Tag Name", tagName != null ? tagName : "Unknown");
+                if (pos != null) {
+                    telemetry.addData("X (in)", "%.2f", pos.x);
+                    telemetry.addData("Y (in)", "%.2f", pos.y);
+                    telemetry.addData("Z (in)", "%.2f", pos.z);
+                } else {
+                    telemetry.addLine("No valid position detected.");
+                }
+                telemetry.addData("Yaw (deg)", "%.2f", yaw);
+            } else {
+                telemetry.addLine("No tag detected.");
+            }
             telemetry.update();
         }
 
-        int startPosition = visionOutputPosition;
-        telemetry.addData("Starting Position", startPosition);
-        telemetry.update();
-        waitForStart();
-
-        if (isStopRequested()) return;
-
-        Action trajectoryActionChosen;
-        if (startPosition == 1) {
-            trajectoryActionChosen = tab.build();
-        } else if (startPosition == 2) {
-            trajectoryActionChosen = tab2.build();
-        } else {
-            trajectoryActionChosen = tab.build();
-        }
-
-        Actions.runBlocking(
-                new SequentialAction(
-                        trajectoryActionChosen,
-//                        lift.liftUp(),
-//                        claw.openClaw(),
-//                        lift.liftDown(),
-                        trajectoryActionCloseOut
-                )
-        );
+        aprilTag.shutdown();
     }
 }
