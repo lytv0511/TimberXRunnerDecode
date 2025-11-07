@@ -9,6 +9,7 @@ public class RunMotors extends OpMode {
 
     private DcMotor launcherRight;
     private DcMotor launcherLeft;
+    private MecanumDrive drive;
 
     @Override
     public void init() {
@@ -20,13 +21,38 @@ public class RunMotors extends OpMode {
         launcherRight.setDirection(DcMotor.Direction.FORWARD);
         launcherLeft.setDirection(DcMotor.Direction.REVERSE);
 
+        drive = new MecanumDrive(hardwareMap, new com.acmerobotics.roadrunner.Pose2d(0, 0, 0));
+
         telemetry.addData("Status", "Initialized");
     }
 
     @Override
     public void loop() {
+        double driveY = -gamepad1.left_stick_y;
+        double driveX = -gamepad1.left_stick_x;
+        double turn = -gamepad1.right_stick_x;
+
+        drive.setDrivePowers(new com.acmerobotics.roadrunner.PoseVelocity2d(
+            new com.acmerobotics.roadrunner.Vector2d(driveY, driveX),
+            turn
+        ));
+
+        telemetry.addData("DriveY", driveY);
+        telemetry.addData("DriveX", driveX);
+        telemetry.addData("Turn", turn);
+
         // Right trigger on gamepad1 goes from 0.0 to 1.0
-        double triggerPower = gamepad1.right_trigger;
+        double triggerPower = 0;
+        double launcherTrigger = 0;
+
+        if (gamepad1.left_bumper && gamepad1.right_bumper) {
+            launcherTrigger = gamepad1.right_trigger - gamepad1.left_trigger;
+            triggerPower = gamepad1.right_trigger - gamepad1.left_trigger;
+        } else if (gamepad1.right_bumper) {
+            triggerPower = gamepad1.right_trigger - gamepad1.left_trigger;
+        } else if (gamepad1.left_bumper) {
+            launcherTrigger = gamepad1.right_trigger - gamepad1.left_trigger;
+        }
 
         if (gamepad1.a) {
             triggerPower = 0.8;
@@ -46,7 +72,7 @@ public class RunMotors extends OpMode {
 
         // Set both launchers to that power
         launcherRight.setPower(triggerPower);
-        launcherLeft.setPower(triggerPower);
+        launcherLeft.setPower(-launcherTrigger);
 
         telemetry.addData("Trigger", triggerPower);
         telemetry.addData("Launcher1 Power", launcherRight.getPower());
