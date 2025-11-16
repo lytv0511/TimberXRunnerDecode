@@ -24,7 +24,7 @@ public class StudioAprilTag {
 
     public void init(HardwareMap hwMap, String cameraName) {
         // Camera pose relative to bot center
-        Position cameraPosition = new Position(DistanceUnit.INCH, 0, 0, 6, 0);
+        Position cameraPosition = new Position(DistanceUnit.INCH, 0, 0, 0, 0);
         YawPitchRollAngles cameraOrientation = new YawPitchRollAngles(AngleUnit.DEGREES, 0, -90, 0, 0);
 
         aprilTag = new AprilTagProcessor.Builder()
