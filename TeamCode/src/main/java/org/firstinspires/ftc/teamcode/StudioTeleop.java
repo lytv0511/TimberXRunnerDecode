@@ -62,6 +62,9 @@ public class StudioTeleop extends OpMode {
             double x = pos.x;
             double z = pos.z;
             distance = Math.sqrt(x * x + z * z);
+            telemetry.addData("Tag X (in)", x);
+            telemetry.addData("Tag Y (in)", pos.y);
+            telemetry.addData("Tag Z (in)", z);
         }
 
         // Convert distance to ticks (example linear function, adjust later)
