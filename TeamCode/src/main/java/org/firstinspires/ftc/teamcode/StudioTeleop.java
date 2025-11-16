@@ -53,22 +53,48 @@ public class StudioTeleop extends OpMode {
         telemetry.addData("DriveX", driveX);
         telemetry.addData("Turn", turn);
 
+        // === APRILTAG LOCALIZATION & TELEMETRY ===
         aprilTag.updatePose();
+
         int tagId = aprilTag.getTagId();
+        String tagName = aprilTag.getTagName();
+        double yaw = aprilTag.getYawDegrees();
         org.firstinspires.ftc.robotcore.external.navigation.Position pos = aprilTag.getRobotPosition();
 
+        telemetry.addLine("=== AprilTag Detection (TeleOp) ===");
         double distance = 0;
-        if (tagId == 24 && pos != null) {
-            double x = pos.x;
-            double z = pos.z;
-            distance = Math.sqrt(x * x + z * z);
-            telemetry.addData("Tag X (in)", x);
-            telemetry.addData("Tag Y (in)", pos.y);
-            telemetry.addData("Tag Z (in)", z);
-        }
+        if (tagId != -1) {
+            telemetry.addData("Tag ID", tagId);
+            telemetry.addData("Tag Name", tagName != null ? tagName : "Unknown");
+            if (pos != null) {
+                double x = pos.x;
+                double yPos = pos.y;
+                double z = pos.z;
 
-        // Convert distance to ticks (example linear function, adjust later)
-        launchTargetTicks = distance / 100;
+                telemetry.addData("X (in)", "%.2f", x);
+                telemetry.addData("Y (in)", "%.2f", yPos);
+                telemetry.addData("Z (in)", "%.2f", z);
+
+                // Calculate distance ignoring yPos
+                distance = Math.sqrt(x * x + z * z);
+                telemetry.addData("Distance (in)", "%.2f", distance);
+
+                // Convert distance to ticks (adjust as needed)
+                launchTargetTicks = distance / 100.0;
+
+                // Fire using proportional power based on distance
+                if (gamepad1.x && tagId == 24) {
+                    launcherRight.setPower(launchTargetTicks);
+                }
+
+                telemetry.addData("Launch Target Ticks", "%.4f", launchTargetTicks);
+            } else {
+                telemetry.addLine("No valid pose detected.");
+            }
+            telemetry.addData("Yaw (deg)", "%.2f", yaw);
+        } else {
+            telemetry.addLine("No AprilTag detected.");
+        }
 
         // Right trigger on gamepad1 goes from 0.0 to 1.0
         double triggerPower = 0;
@@ -130,9 +156,7 @@ public class StudioTeleop extends OpMode {
         telemetry.addData("Trigger", triggerPower);
         telemetry.addData("Launcher1 Power", launcherRight.getPower());
         telemetry.addData("Launcher2 Power", launcherLeft.getPower());
-        telemetry.addData("TagID", tagId);
-        telemetry.addData("Distance (in)", distance);
-        telemetry.addData("Launch Target Ticks", launchTargetTicks);
+        // (Rest of telemetry and loop logic unchanged)
     }
 
     @Override
