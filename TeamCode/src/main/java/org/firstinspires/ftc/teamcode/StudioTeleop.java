@@ -65,7 +65,7 @@ public class StudioTeleop extends OpMode {
         }
 
         // Convert distance to ticks (example linear function, adjust later)
-        launchTargetTicks = (int)(distance * 20);
+        launchTargetTicks = distance / 100;
 
         // Right trigger on gamepad1 goes from 0.0 to 1.0
         double triggerPower = 0;
@@ -105,8 +105,7 @@ public class StudioTeleop extends OpMode {
         }
 
         if (gamepad1.x && tagId == 24 && pos != null) {
-            launcherRight.setPower((int) launchTargetTicks);
-            launcherRight.setPower(1.0);
+            launcherRight.setPower(launchTargetTicks);
         }
 
         if (gamepad1.y) {
