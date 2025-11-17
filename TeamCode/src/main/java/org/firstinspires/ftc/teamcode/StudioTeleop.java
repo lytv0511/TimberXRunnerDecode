@@ -27,8 +27,8 @@ public class StudioTeleop extends OpMode {
         // Adjust direction if needed
         launcherRight.setDirection(DcMotor.Direction.FORWARD);
         launcherLeft.setDirection(DcMotor.Direction.REVERSE);
-        sorter.setTargetPosition(1);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         drive = new MecanumDrive(hardwareMap, new com.acmerobotics.roadrunner.Pose2d(0, 0, 0));
 
@@ -141,12 +141,46 @@ public class StudioTeleop extends OpMode {
             triggerPower = 0.75;
         }
 
+        double ticksPerRevolution = 537.7;
+
+        // Calculate positions
+        double pos60 = ticksPerRevolution / 6;
+        double pos120 = ticksPerRevolution / 3;
+        double pos180 = ticksPerRevolution / 2;
+        double pos240 = (ticksPerRevolution * 2) / 3;
+        double pos300 = (ticksPerRevolution * 5) / 6;
+        double pos360 = ticksPerRevolution;
+
+        double target = 0;
+
+        // D-Pad Right
+        if (gamepad1.dpad_right) {
+            target = gamepad1.left_bumper ? pos60 : pos120;
+        }
+        // D-Pad Up
         if (gamepad1.dpad_up) {
-            sorter.setTargetPosition(1);
-        } else if (gamepad1.dpad_right) {
-            sorter.setTargetPosition(0);
-        } else if (gamepad1.dpad_left) {
-            sorter.setTargetPosition(-1);
+            target = gamepad1.left_bumper ? pos180 : pos240;
+        }
+        // D-Pad Left
+        if (gamepad1.dpad_left) {
+            target = gamepad1.left_bumper ? pos300 : pos360;
+        }
+
+        // If any D-pad button pressed, move motor
+        if (gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) {
+         sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+         sorter.setTargetPosition((int) target);
+         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+          sorter.setPower(0.5);
+        }
+
+        telemetry.addData("Sorter Position", sorter.getCurrentPosition());
+        telemetry.addData("Sorter Target", sorter.getTargetPosition());
+        telemetry.addData("Sorter Busy", sorter.isBusy());
+
+        if (sorter.getMode() == DcMotor.RunMode.RUN_TO_POSITION && !sorter.isBusy()) {
+            sorter.setPower(0);
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
 
         // Set both launchers to that power
