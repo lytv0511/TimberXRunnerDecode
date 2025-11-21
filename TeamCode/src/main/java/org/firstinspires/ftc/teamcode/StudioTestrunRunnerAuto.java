@@ -1,99 +1,81 @@
 package org.firstinspires.ftc.teamcode;
 
-import androidx.annotation.NonNull;
-
-import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
-import com.acmerobotics.roadrunner.Action;
-import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.Vector2d;
-import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
 import java.util.List;
 
-@Autonomous(name="StudioTestrunRunnerAuto")
+/**
+ * Direct camera-relative AprilTag distance & angle tracker.
+ * Uses det.ftcPose.x, y, z without robotPose or field mapping.
+ */
+@Autonomous(name = "StudioTestrunRunnerAuto", group = "Autonomous")
 public class StudioTestrunRunnerAuto extends LinearOpMode {
-    private StudioAprilTag studioAprilTag;
+
+    private VisionPortal visionPortal;
+    private AprilTagProcessor aprilTag;
 
     @Override
-    public void runOpMode() throws InterruptedException {
-        MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
-        studioAprilTag = new StudioAprilTag();
-        studioAprilTag.init(hardwareMap, "Webcam 1");
-        telemetry.addLine("Initialized. Waiting for start...");
+    public void runOpMode() {
+
+        telemetry.addLine("Initializing AprilTag...");
         telemetry.update();
 
-        int tagId = -1;
-        while (!isStarted() && !isStopRequested()) {
-            List<AprilTagDetection> detections = studioAprilTag.getDetections();
-            if (!detections.isEmpty()) {
-                tagId = detections.get(0).id;
-                telemetry.addData("Detected Tag ID", tagId);
-            } else {
-                telemetry.addLine("No tag detected");
-            }
-            telemetry.update();
-            sleep(20);
-        }
+        aprilTag = new AprilTagProcessor.Builder()
+                .setDrawTagID(true)
+                .setDrawAxes(true)
+                .build();
+
+        visionPortal = new VisionPortal.Builder()
+                .setCamera(hardwareMap.get(org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName.class, "Webcam 1"))
+                .addProcessor(aprilTag)
+                .build();
+
+        telemetry.addLine("AprilTag Initialized — Waiting for start");
+        telemetry.update();
 
         waitForStart();
 
-        if (isStopRequested()) return;
+        while (opModeIsActive()) {
 
-        Actions.runBlocking(
-                drive.actionBuilder(new Pose2d(0, 0, 0))
-                        .lineToX(20)
-                        .build());
+            List<AprilTagDetection> detections = aprilTag.getDetections();
 
-        sleep(500);
+            if (detections.isEmpty()) {
+                telemetry.addLine("No AprilTag detected.");
+                telemetry.update();
+                continue;
+            }
 
-        tagId = detectTagID();
-        telemetry.addData("Detected Tag ID after scanning", tagId);
-        telemetry.update();
+            AprilTagDetection det = detections.get(0);
 
-        Action trajectoryActionChosen;
-        Pose2d currentPose = drive.localizer.getPose();
-        if (tagId == 21) {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .splineToConstantHeading(new Vector2d(71, 0), Math.toRadians(-270))
-                    .lineToY(-48)
-                    .waitSeconds(0.5)
-                    .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
-                    .build();
-        } else if (tagId == 22) {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .lineToX(36)
-                    .strafeTo(new Vector2d(36, 48))
-                    .build();
-        } else if (tagId == 23) {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .strafeTo(new Vector2d(46, 30))
-                    .build();
-        } else {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .waitSeconds(0.1)
-                    .build();
+            double x = det.ftcPose.x;  // forward distance (in)
+            double y = det.ftcPose.y;  // left-right (in)
+            double z = det.ftcPose.z;  // up-down (ignored for flat distance)
+
+            double flatDistance = Math.hypot(x, y) * 1.1;
+            double theta = Math.toDegrees(Math.atan2(y, x));
+
+            telemetry.addLine("=== Direct Camera → Tag ===");
+//            telemetry.addData("Forward x", "%.2f in", x);
+//            telemetry.addData("Left y", "%.2f in", y);
+//            telemetry.addData("Vertical z", "%.2f in", z);
+
+            telemetry.addData("Flat Distance", "%.2f in", flatDistance);
+            telemetry.addData("Horizontal Angle θ", "%.2f°", theta);
+
+            telemetry.addData("Tag Yaw", "%.2f°", det.ftcPose.yaw);
+            telemetry.addData("Tag Pitch", "%.2f°", det.ftcPose.pitch);
+            telemetry.addData("Tag Roll", "%.2f°", det.ftcPose.roll);
+
+            telemetry.update();
         }
-        Actions.runBlocking(
-                drive.actionBuilder(new Pose2d(0, 0, 0))
-                        .lineToX(103)
-                        .turn(Math.toRadians(-90))
-                        .lineToY(-32)
-                        .turn(Math.toRadians(28))
-                    .build());
-        sleep(5000);
-        Actions.runBlocking(trajectoryActionChosen);
 
-        studioAprilTag.shutdown();
-    }
-
-    private int detectTagID() {
-        List<AprilTagDetection> detections = studioAprilTag.getDetections();
-        if (!detections.isEmpty()) return detections.get(0).id;
-        return -1;
+        if (visionPortal != null) {
+            visionPortal.close();
+        }
     }
 }
