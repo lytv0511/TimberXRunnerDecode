@@ -8,8 +8,8 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 @TeleOp(name="StudioTeleop", group="TeleOp")
 public class StudioTeleop extends OpMode {
 
-    private DcMotor launcherRight;
-    private DcMotor launcherLeft;
+    private DcMotor launcherFlywheel;
+    private DcMotor launcherElevator;
     private DcMotor sorter;
     private CRServo intakeServo;
     private MecanumDrive drive;
@@ -19,14 +19,14 @@ public class StudioTeleop extends OpMode {
     @Override
     public void init() {
         // Map motors from the configuration
-        launcherRight = hardwareMap.get(DcMotor.class, "launcherRight");
-        launcherLeft = hardwareMap.get(DcMotor.class, "launcherLeft");
+        launcherFlywheel = hardwareMap.get(DcMotor.class, "launcherFlywheel");
+        launcherElevator = hardwareMap.get(DcMotor.class, "launcherElevator");
         sorter = hardwareMap.get(DcMotor.class, "sorter");
         intakeServo = hardwareMap.get(CRServo.class, "intakeServo");
 
         // Adjust direction if needed
-        launcherRight.setDirection(DcMotor.Direction.FORWARD);
-        launcherLeft.setDirection(DcMotor.Direction.REVERSE);
+        launcherFlywheel.setDirection(DcMotor.Direction.FORWARD);
+        launcherElevator.setDirection(DcMotor.Direction.REVERSE);
         sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
@@ -84,7 +84,7 @@ public class StudioTeleop extends OpMode {
 
                 // Fire using proportional power based on distance
                 if (gamepad1.x && tagId == 24) {
-                    launcherRight.setPower(launchTargetTicks);
+                    launcherFlywheel.setPower(launchTargetTicks);
                 }
 
                 telemetry.addData("Launch Target Ticks", "%.4f", launchTargetTicks);
@@ -125,7 +125,7 @@ public class StudioTeleop extends OpMode {
         }
 
         if (gamepad1.x && tagId == 24 && pos != null) {
-            launcherRight.setPower(launchTargetTicks);
+            launcherFlywheel.setPower(launchTargetTicks);
         }
 
         if (gamepad1.y) {
@@ -162,7 +162,44 @@ public class StudioTeleop extends OpMode {
          sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
          sorter.setTargetPosition((int) target);
          sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-          sorter.setPower(0.5);
+        sorter.setPower(0.5);
+        }
+
+        String targetPattern = "GPP";
+        String storePattern = "GPP";
+
+        if (gamepad1.dpad_down) {
+            if (storePattern == "GPP") {
+                if (targetPattern == "GPP") {
+                    initiateLuanchSequence(augPos1, augPos2, augPos3);
+                }
+            }
+        }
+
+        void initiateLuanchSequence(double targetAugPos1, double targetAugPos2, double targetAugPos3) {
+            launcherFlywheel.setPower(1.0);
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            sorter.setTargetPosition((int) targetAugPos1);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.3);
+            launcherElevator.setPower(1.0);
+            sleep(2000);
+            launcherElevator.setPower(0);
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            sorter.setTargetPosition((int) targetAugPos2);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.3);
+            launcherElevator.setPower(1.0);
+            sleep(2000);
+            launcherElevator.setPower(0);
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            sorter.setTargetPosition((int) targetAugPos3);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.3);
+            launcherElevator.setPower(1.0);
+            sleep(2000);
+            launcherElevator.setPower(0);
+            launcherFlywheel.setPower(0);
         }
 
         telemetry.addData("Sorter Position", sorter.getCurrentPosition());
@@ -175,19 +212,19 @@ public class StudioTeleop extends OpMode {
         }
 
         // Set both launchers to that power
-        launcherRight.setPower(triggerPower);
-        launcherLeft.setPower(-launcherTrigger);
+        launcherFlywheel.setPower(triggerPower);
+        launcherElevator.setPower(-launcherTrigger);
 
         telemetry.addData("Trigger", triggerPower);
-        telemetry.addData("Launcher1 Power", launcherRight.getPower());
-        telemetry.addData("Launcher2 Power", launcherLeft.getPower());
+        telemetry.addData("Launcher1 Power", launcherFlywheel.getPower());
+        telemetry.addData("Launcher2 Power", launcherElevator.getPower());
         // (Rest of telemetry and loop logic unchanged)
     }
 
     @Override
     public void stop() {
         // Stop motors when TeleOp ends
-        launcherRight.setPower(0.0);
-        launcherLeft.setPower(0.0);
+        launcherFlywheel.setPower(0.0);
+        launcherElevator.setPower(0.0);
     }
 }
