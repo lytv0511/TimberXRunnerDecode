@@ -101,15 +101,6 @@ public class StudioTeleop extends OpMode {
         double launcherTrigger = 0;
         boolean intakeOn = false;
 
-//        if (gamepad1.left_bumper && gamepad1.right_bumper) {
-//            launcherTrigger = gamepad1.right_trigger - gamepad1.left_trigger;
-//            triggerPower = gamepad1.right_trigger - gamepad1.left_trigger;
-//        } else if (gamepad1.right_bumper) {
-//            triggerPower = gamepad1.right_trigger - gamepad1.left_trigger;
-//        } else if (gamepad1.left_bumper) {
-//            launcherTrigger = gamepad1.right_trigger - gamepad1.left_trigger;
-//        }
-
         if (gamepad1.right_bumper) {
             intakeOn = true;
         } else if (gamepad1.left_bumper) {
@@ -144,26 +135,26 @@ public class StudioTeleop extends OpMode {
         double ticksPerRevolution = 537.7;
 
         // Calculate positions
-        double pos60 = ticksPerRevolution / 6;
-        double pos120 = ticksPerRevolution / 3;
-        double pos180 = ticksPerRevolution / 2;
-        double pos240 = (ticksPerRevolution * 2) / 3;
-        double pos300 = (ticksPerRevolution * 5) / 6;
-        double pos360 = ticksPerRevolution;
+        double augPos3 = ticksPerRevolution / 6; // 60°
+        double pos2 = ticksPerRevolution / 3; // 120°
+        double augPos1 = ticksPerRevolution / 2; // 180°
+        double pos3 = (ticksPerRevolution * 2) / 3; // 240°
+        double augPos2 = (ticksPerRevolution * 5) / 6; // 300°
+        double pos1 = 0; // 360°
 
         double target = 0;
 
         // D-Pad Right
         if (gamepad1.dpad_right) {
-            target = gamepad1.left_bumper ? pos60 : pos120;
+            target = gamepad1.left_bumper ? pos2 : augPos2;
         }
         // D-Pad Up
         if (gamepad1.dpad_up) {
-            target = gamepad1.left_bumper ? pos180 : pos240;
+            target = gamepad1.left_bumper ? pos3 : augPos3;
         }
         // D-Pad Left
         if (gamepad1.dpad_left) {
-            target = gamepad1.left_bumper ? pos300 : pos360;
+            target = gamepad1.left_bumper ? pos1 : augPos1;
         }
 
         // If any D-pad button pressed, move motor
