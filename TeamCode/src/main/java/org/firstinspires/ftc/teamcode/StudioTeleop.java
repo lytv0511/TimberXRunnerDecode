@@ -146,11 +146,11 @@ public class StudioTeleop extends OpMode {
 
         // D-Pad Right
         if (gamepad1.dpad_right) {
-            target = gamepad1.left_bumper ? pos2 : augPos2;
+            target = gamepad1.left_bumper ? pos3 : augPos3;
         }
         // D-Pad Up
         if (gamepad1.dpad_up) {
-            target = gamepad1.left_bumper ? pos3 : augPos3;
+            target = gamepad1.left_bumper ? pos2 : augPos2;
         }
         // D-Pad Left
         if (gamepad1.dpad_left) {
