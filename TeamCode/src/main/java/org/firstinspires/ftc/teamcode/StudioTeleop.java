@@ -196,9 +196,9 @@ public class StudioTeleop extends OpMode {
             }
         }
 
-        bool launcherSequenceBusy == false;
+        boolean launcherSequenceBusy = false;
 
-        void initiateLuanchSequence(double targetAugPos1, double targetAugPos2, double targetAugPos3) {
+        private void initiateLuanchSequence(double targetAugPos1, double targetAugPos2, double targetAugPos3) {
             launcherSequenceBusy = true;
             launcherFlywheel.setPower(1.0);
             sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
