@@ -172,6 +172,26 @@ public class StudioTeleop extends OpMode {
             if (storePattern == "GPP") {
                 if (targetPattern == "GPP") {
                     initiateLuanchSequence(augPos1, augPos2, augPos3);
+                } else if (targetPattern == "PGP") {
+                    initiateLuanchSequence(augPos2, augPos3, augPos1);
+                } else if (targetPattern = "PPG") {
+                    initiateLuanchSequence(augPos3, augPos2, augPos1);
+                }
+            } else if (storePattern == "PGP") {
+                if (targetPattern == "GPP") {
+                    initiateLuanchSequence(augPos2, augPos1, augPos3);
+                } else if (targetPattern == "PGP") {
+                    initiateLuanchSequence(augPos1, augPos2, augPos3);
+                } else if (targetPattern = "PPG") {
+                    initiateLuanchSequence(augPos3, augPos1, augPos2);
+                }
+            } else if (targetPattern == "PPG") {
+                if (targetPattern == "GPP") {
+                    initiateLuanchSequence(augPos3, augPos2, augPos1);
+                } else if (targetPattern == "PGP") {
+                    initiateLuanchSequence(augPos1, augPos3, augPos2);
+                } else if (targetPattern = "PPG") {
+                    initiateLuanchSequence(augPos1, augPos2, augPos3);
                 }
             }
         }
