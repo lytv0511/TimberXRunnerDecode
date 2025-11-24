@@ -159,10 +159,10 @@ public class StudioTeleop extends OpMode {
 
         // If any D-pad button pressed, move motor
         if (gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) {
-         sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-         sorter.setTargetPosition((int) target);
-         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            sorter.setTargetPosition((int) target);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.5);
         }
 
         String targetPattern = "GPP";
@@ -196,7 +196,10 @@ public class StudioTeleop extends OpMode {
             }
         }
 
+        bool launcherSequenceBusy == false;
+
         void initiateLuanchSequence(double targetAugPos1, double targetAugPos2, double targetAugPos3) {
+            launcherSequenceBusy = true;
             launcherFlywheel.setPower(1.0);
             sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             sorter.setTargetPosition((int) targetAugPos1);
@@ -220,6 +223,7 @@ public class StudioTeleop extends OpMode {
             sleep(2000);
             launcherElevator.setPower(0);
             launcherFlywheel.setPower(0);
+            launcherSequenceBusy == false;
         }
 
         telemetry.addData("Sorter Position", sorter.getCurrentPosition());
