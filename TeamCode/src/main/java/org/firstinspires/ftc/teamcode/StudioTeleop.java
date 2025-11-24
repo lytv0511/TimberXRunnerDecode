@@ -38,6 +38,36 @@ public class StudioTeleop extends OpMode {
         telemetry.addData("Status", "Initialized");
     }
 
+    boolean launcherSequenceBusy = false;
+
+    private void initiateLaunchSequence(double targetAugPos1, double targetAugPos2, double targetAugPos3) {
+        launcherSequenceBusy = true;
+        launcherFlywheel.setPower(1.0);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition((int) targetAugPos1);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        launcherElevator.setPower(1.0);
+        sleep(2000);
+        launcherElevator.setPower(0);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition((int) targetAugPos2);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        launcherElevator.setPower(1.0);
+        sleep(2000);
+        launcherElevator.setPower(0);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition((int) targetAugPos3);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        launcherElevator.setPower(1.0);
+        sleep(2000);
+        launcherElevator.setPower(0);
+        launcherFlywheel.setPower(0);
+        launcherSequenceBusy = false;
+    }
+
     @Override
     public void loop() {
         double driveY = -gamepad1.left_stick_y;
@@ -194,36 +224,6 @@ public class StudioTeleop extends OpMode {
                     initiateLuanchSequence(augPos1, augPos2, augPos3);
                 }
             }
-        }
-
-        boolean launcherSequenceBusy = false;
-
-        private void initiateLuanchSequence(double targetAugPos1, double targetAugPos2, double targetAugPos3) {
-            launcherSequenceBusy = true;
-            launcherFlywheel.setPower(1.0);
-            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            sorter.setTargetPosition((int) targetAugPos1);
-            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.3);
-            launcherElevator.setPower(1.0);
-            sleep(2000);
-            launcherElevator.setPower(0);
-            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            sorter.setTargetPosition((int) targetAugPos2);
-            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.3);
-            launcherElevator.setPower(1.0);
-            sleep(2000);
-            launcherElevator.setPower(0);
-            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            sorter.setTargetPosition((int) targetAugPos3);
-            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.3);
-            launcherElevator.setPower(1.0);
-            sleep(2000);
-            launcherElevator.setPower(0);
-            launcherFlywheel.setPower(0);
-            launcherSequenceBusy == false;
         }
 
         telemetry.addData("Sorter Position", sorter.getCurrentPosition());
