@@ -1,12 +1,13 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp(name="StudioTeleop", group="TeleOp")
-public class StudioTeleop extends OpMode {
+public class StudioTeleop extends LinearOpMode {
 
     private DcMotor launcherFlywheel;
     private DcMotor launcherElevator;
@@ -17,14 +18,13 @@ public class StudioTeleop extends OpMode {
     private double launchTargetTicks = 0;
 
     @Override
-    public void init() {
+    public void runOpMode() {
         // Map motors from the configuration
         launcherFlywheel = hardwareMap.get(DcMotor.class, "launcherFlywheel");
         launcherElevator = hardwareMap.get(DcMotor.class, "launcherElevator");
         sorter = hardwareMap.get(DcMotor.class, "sorter");
         intakeServo = hardwareMap.get(CRServo.class, "intakeServo");
 
-        // Adjust direction if needed
         launcherFlywheel.setDirection(DcMotor.Direction.FORWARD);
         launcherElevator.setDirection(DcMotor.Direction.REVERSE);
         sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -36,6 +36,13 @@ public class StudioTeleop extends OpMode {
         aprilTag.init(hardwareMap, "Webcam 1");
 
         telemetry.addData("Status", "Initialized");
+        telemetry.update();
+
+        waitForStart();
+
+        while (opModeIsActive()) {
+            loopLogic();
+        }
     }
 
     boolean launcherSequenceBusy = false;
@@ -68,8 +75,7 @@ public class StudioTeleop extends OpMode {
         launcherSequenceBusy = false;
     }
 
-    @Override
-    public void loop() {
+    private void loopLogic() {
         double driveY = -gamepad1.left_stick_y;
         double driveX = -gamepad1.left_stick_x;
         double turn = -gamepad1.right_stick_x;
@@ -201,27 +207,27 @@ public class StudioTeleop extends OpMode {
         if (gamepad1.dpad_down) {
             if (storePattern == "GPP") {
                 if (targetPattern == "GPP") {
-                    initiateLuanchSequence(augPos1, augPos2, augPos3);
+                    initiateLaunchSequence(augPos1, augPos2, augPos3);
                 } else if (targetPattern == "PGP") {
-                    initiateLuanchSequence(augPos2, augPos3, augPos1);
-                } else if (targetPattern = "PPG") {
-                    initiateLuanchSequence(augPos3, augPos2, augPos1);
+                    initiateLaunchSequence(augPos2, augPos3, augPos1);
+                } else if (targetPattern == "PPG") {
+                    initiateLaunchSequence(augPos3, augPos2, augPos1);
                 }
             } else if (storePattern == "PGP") {
                 if (targetPattern == "GPP") {
-                    initiateLuanchSequence(augPos2, augPos1, augPos3);
+                    initiateLaunchSequence(augPos2, augPos1, augPos3);
                 } else if (targetPattern == "PGP") {
-                    initiateLuanchSequence(augPos1, augPos2, augPos3);
-                } else if (targetPattern = "PPG") {
-                    initiateLuanchSequence(augPos3, augPos1, augPos2);
+                    initiateLaunchSequence(augPos1, augPos2, augPos3);
+                } else if (targetPattern == "PPG") {
+                    initiateLaunchSequence(augPos3, augPos1, augPos2);
                 }
             } else if (targetPattern == "PPG") {
                 if (targetPattern == "GPP") {
-                    initiateLuanchSequence(augPos3, augPos2, augPos1);
+                    initiateLaunchSequence(augPos3, augPos2, augPos1);
                 } else if (targetPattern == "PGP") {
-                    initiateLuanchSequence(augPos1, augPos3, augPos2);
-                } else if (targetPattern = "PPG") {
-                    initiateLuanchSequence(augPos1, augPos2, augPos3);
+                    initiateLaunchSequence(augPos1, augPos3, augPos2);
+                } else if (targetPattern == "PPG") {
+                    initiateLaunchSequence(augPos1, augPos2, augPos3);
                 }
             }
         }
@@ -243,12 +249,5 @@ public class StudioTeleop extends OpMode {
         telemetry.addData("Launcher1 Power", launcherFlywheel.getPower());
         telemetry.addData("Launcher2 Power", launcherElevator.getPower());
         // (Rest of telemetry and loop logic unchanged)
-    }
-
-    @Override
-    public void stop() {
-        // Stop motors when TeleOp ends
-        launcherFlywheel.setPower(0.0);
-        launcherElevator.setPower(0.0);
     }
 }
