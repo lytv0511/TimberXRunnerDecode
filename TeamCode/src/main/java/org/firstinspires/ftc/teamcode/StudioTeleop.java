@@ -90,10 +90,10 @@ public class StudioTeleop extends LinearOpMode {
                 .setDrawAxes(true)
                 .build();
 
-        visionPortalDirect = new VisionPortal.Builder()
-                .setCamera(hardwareMap.get(org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName.class, "Webcam 1"))
-                .addProcessor(aprilTagDirect)
-                .build();
+//        visionPortalDirect = new VisionPortal.Builder()
+//                .setCamera(hardwareMap.get(org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName.class, "Webcam 1"))
+//                .addProcessor(aprilTagDirect)
+//                .build();
 
         telemetry.addData("Status", "Initialized");
         telemetry.update();
