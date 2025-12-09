@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.vision.VisionPortal;
@@ -30,7 +31,7 @@ public class StudioTeleop extends LinearOpMode {
     private double augPos2 = (ticksPerRevolution * 5) / 6; // 300°
     private double augPos3 = ticksPerRevolution / 6;      // 60°
 
-    private DcMotor launcherFlywheel;
+    private DcMotorEx launcherFlywheel;
     private DcMotor launcherElevator;
     private DcMotor sorter;
     private CRServo intakeServo;
@@ -68,7 +69,7 @@ public class StudioTeleop extends LinearOpMode {
     @Override
     public void runOpMode() {
         // Map motors from the configuration
-        launcherFlywheel = hardwareMap.get(DcMotor.class, "launcherFlywheel");
+        launcherFlywheel = hardwareMap.get(DcMotorEx.class, "launcherFlywheel");
         launcherElevator = hardwareMap.get(DcMotor.class, "launcherElevator");
         sorter = hardwareMap.get(DcMotor.class, "sorter");
         intakeServo = hardwareMap.get(CRServo.class, "intakeServo");
@@ -138,6 +139,80 @@ public class StudioTeleop extends LinearOpMode {
         launcherElevator.setPower(0);
         launcherFlywheel.setPower(0);
         launcherSequenceBusy = false;
+    }
+
+    /**
+     * Default Intake Sequence:
+     * pos1 → intake ON → 2 sec → pos2 → 2 sec → pos3 → return to pos1
+     */
+    private void defaultIntakeSequence() {
+        // Move to pos1
+        sorter.setTargetPosition(0);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+        // Intake on
+        intakeServo.setPower(1);
+        sleep(2000);
+
+        // Move to pos2 (120°)
+        int pos2 = (int)(ticksPerRevolution / 3);
+        sorter.setTargetPosition(pos2);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(2000);
+
+        // Move to pos3 (240°)
+        int pos3 = (int)((ticksPerRevolution * 2) / 3);
+        sorter.setTargetPosition(pos3);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+        // Return to pos1
+        sorter.setTargetPosition(0);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+        intakeServo.setPower(0);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    }
+
+    /**
+     * Default Launch Sequence:
+     * flywheel ON → augPos1 → elevator ON → augPos2 → 1 sec → augPos3 → return to pos1
+     */
+    private void defaultLaunchSequence() {
+        launcherFlywheel.setVelocity(537.7 * 6000);
+
+        // Step 1: augPos1
+        sorter.setTargetPosition((int)augPos1);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        launcherElevator.setPower(1.0);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(5000);
+
+        double lfv = launcherFlywheel.getVelocity();
+
+        // Step 2: augPos2
+        sorter.setTargetPosition((int)augPos2);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(5000);
+
+        // Step 3: augPos3
+        sorter.setTargetPosition((int)augPos3);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(5000);
+
+        // Return to pos1
+        sorter.setTargetPosition(0);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherElevator.setPower(0);
+        launcherFlywheel.setPower(0);
     }
 
     // === Intake/Sorter/Pattern helper methods ===
@@ -426,11 +501,11 @@ public class StudioTeleop extends LinearOpMode {
         triggerPower = gamepad1.left_trigger;
 
         if (gamepad1.a) {
-            triggerPower = 0.8;
+            defaultIntakeSequence();
         }
 
         if (gamepad1.b) {
-            triggerPower = 1.0;
+            defaultLaunchSequence();
         }
 
         if (gamepad1.x && direct != null && direct.id == 24) {
@@ -438,7 +513,8 @@ public class StudioTeleop extends LinearOpMode {
         }
 
         if (gamepad1.y) {
-            triggerPower = 0.75;
+            launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            launcherFlywheel.setVelocity(537.7 * 312);
         }
 
         double ticksPerRevolution = 537.7;
@@ -477,51 +553,51 @@ public class StudioTeleop extends LinearOpMode {
         String targetPattern = detectedPattern;
         String storePattern = storePatternBuilder.toString();
 
-//        if (gamepad1.dpad_down) {
-//            switch (storePattern) {
-//                case "GPP":
-//                    switch (targetPattern) {
-//                        case "GPP":
-//                            initiateLaunchSequence(augPos1, augPos2, augPos3);
-//                            break;
-//                        case "PGP":
-//                            initiateLaunchSequence(augPos2, augPos3, augPos1);
-//                            break;
-//                        case "PPG":
-//                            initiateLaunchSequence(augPos3, augPos2, augPos1);
-//                            break;
-//                    }
-//                    break;
-//
-//                case "PGP":
-//                    switch (targetPattern) {
-//                        case "GPP":
-//                            initiateLaunchSequence(augPos2, augPos1, augPos3);
-//                            break;
-//                        case "PGP":
-//                            initiateLaunchSequence(augPos1, augPos2, augPos3);
-//                            break;
-//                        case "PPG":
-//                            initiateLaunchSequence(augPos3, augPos1, augPos2);
-//                            break;
-//                    }
-//                    break;
-//
-//                case "PPG":
-//                    switch (targetPattern) {
-//                        case "GPP":
-//                            initiateLaunchSequence(augPos3, augPos2, augPos1);
-//                            break;
-//                        case "PGP":
-//                            initiateLaunchSequence(augPos1, augPos3, augPos2);
-//                            break;
-//                        case "PPG":
-//                            initiateLaunchSequence(augPos1, augPos2, augPos3);
-//                            break;
-//                    }
-//                    break;
-//            }
-//        }
+        if (gamepad1.dpad_down) {
+            switch (storePattern) {
+                case "GPP":
+                    switch (targetPattern) {
+                        case "GPP":
+                            initiateLaunchSequence(augPos1, augPos2, augPos3);
+                            break;
+                        case "PGP":
+                            initiateLaunchSequence(augPos2, augPos3, augPos1);
+                            break;
+                        case "PPG":
+                            initiateLaunchSequence(augPos3, augPos2, augPos1);
+                            break;
+                    }
+                    break;
+
+                case "PGP":
+                    switch (targetPattern) {
+                        case "GPP":
+                            initiateLaunchSequence(augPos2, augPos1, augPos3);
+                            break;
+                        case "PGP":
+                            initiateLaunchSequence(augPos1, augPos2, augPos3);
+                            break;
+                        case "PPG":
+                            initiateLaunchSequence(augPos3, augPos1, augPos2);
+                            break;
+                    }
+                    break;
+
+                case "PPG":
+                    switch (targetPattern) {
+                        case "GPP":
+                            initiateLaunchSequence(augPos3, augPos2, augPos1);
+                            break;
+                        case "PGP":
+                            initiateLaunchSequence(augPos1, augPos3, augPos2);
+                            break;
+                        case "PPG":
+                            initiateLaunchSequence(augPos1, augPos2, augPos3);
+                            break;
+                    }
+                    break;
+            }
+        }
 
         telemetry.addData("Sorter Position", sorter.getCurrentPosition());
         telemetry.addData("Sorter Target", sorter.getTargetPosition());
