@@ -60,9 +60,9 @@ public class StudioTestrunRunnerAuto extends LinearOpMode {
             double theta = Math.toDegrees(Math.atan2(y, x));
 
             telemetry.addLine("=== Direct Camera → Tag ===");
-//            telemetry.addData("Forward x", "%.2f in", x);
-//            telemetry.addData("Left y", "%.2f in", y);
-//            telemetry.addData("Vertical z", "%.2f in", z);
+            telemetry.addData("Forward x", "%.2f in", x);
+            telemetry.addData("Left y", "%.2f in", y);
+            telemetry.addData("Vertical z", "%.2f in", z);
 
             telemetry.addData("Flat Distance", "%.2f in", flatDistance);
             telemetry.addData("Horizontal Angle θ", "%.2f°", theta);
