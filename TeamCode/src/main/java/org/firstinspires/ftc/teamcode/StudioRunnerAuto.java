@@ -9,6 +9,7 @@ import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -23,11 +24,35 @@ import java.util.List;
 public class StudioRunnerAuto extends LinearOpMode {
     private StudioAprilTag studioAprilTag;
 
+    // Hardware declarations
+    private com.qualcomm.robotcore.hardware.DcMotorEx launcherFlywheel;
+    private com.qualcomm.robotcore.hardware.DcMotor launcherElevator;
+    private com.qualcomm.robotcore.hardware.DcMotor sorter;
+    private com.qualcomm.robotcore.hardware.CRServo intakeServo;
+
+    private double ticksPerRevolution = 537.7;
+    private double augPos1, augPos2, augPos3;
+
     @Override
     public void runOpMode() throws InterruptedException {
         MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
         studioAprilTag = new StudioAprilTag();
         studioAprilTag.init(hardwareMap, "Webcam 1");
+
+        // Hardware initialization
+        launcherFlywheel = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotorEx.class, "launcherFlywheel");
+        launcherElevator = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotor.class, "launcherElevator");
+        sorter = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotor.class, "sorter");
+        intakeServo = hardwareMap.get(com.qualcomm.robotcore.hardware.CRServo.class, "intakeServo");
+
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setDirection(com.qualcomm.robotcore.hardware.DcMotor.Direction.REVERSE);
+
+        augPos1 = ticksPerRevolution / 2;
+        augPos2 = (ticksPerRevolution * 5) / 6;
+        augPos3 = ticksPerRevolution / 6;
+
         telemetry.addLine("Initialized. Waiting for start...");
         telemetry.update();
 
@@ -65,65 +90,71 @@ public class StudioRunnerAuto extends LinearOpMode {
 
         Actions.runBlocking(
                 drive.actionBuilder(new Pose2d(0, 0, 0))
-                        .lineToX(20)
-                        .build());
+                        .setTangent(Math.toRadians(0))   // heading right (x-positive)
+                        .strafeTo(new Vector2d(0, 10))  // go left/right based on field coords
+                        .setTangent(Math.toRadians(180)) // now we want to go backwards toward -X
+                        .lineToX(-50)                    // RR now has a valid heading
+                        .build()
+        );
 
         sleep(500);
 
-        tagId = detectTagID();
-        telemetry.addData("Detected Tag ID after scanning", tagId);
+        defaultLaunchSequence();
 
-        String tagName = studioAprilTag.getTagName();
-        if (tagName != null) {
-            telemetry.addData("Tag Name", tagName);
-        }
-
-        Position pos = studioAprilTag.getRobotPosition();
-        YawPitchRollAngles ori = studioAprilTag.getRobotOrientation();
-        if (pos != null && ori != null) {
-            telemetry.addData("Robot X", "%.2f", pos.x);
-            telemetry.addData("Robot Y", "%.2f", pos.y);
-            telemetry.addData("Robot Z", "%.2f", pos.z);
-            telemetry.addData("Robot Yaw", "%.2f", ori.getYaw(AngleUnit.DEGREES));
-            telemetry.addData("Robot Pitch", "%.2f", ori.getPitch(AngleUnit.DEGREES));
-            telemetry.addData("Robot Roll", "%.2f", ori.getRoll(AngleUnit.DEGREES));
-        }
-        telemetry.update();
-
-        Action trajectoryActionChosen;
-        Pose2d currentPose = drive.localizer.getPose();
-        if (tagId == 21) {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .splineTo(new Vector2d(71, 0), Math.toRadians(-90))
-                    .lineToY(-48)
-                    .waitSeconds(0.5)
-                    .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
-                    .build();
-        } else if (tagId == 22) {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .lineToX(36)
-                    .strafeTo(new Vector2d(36, 48))
-                    .build();
-        } else if (tagId == 23) {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .strafeTo(new Vector2d(46, 30))
-                    .build();
-        } else {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .waitSeconds(0.1)
-                    .build();
-        }
-
-        Actions.runBlocking(
-                drive.actionBuilder(currentPose)
-                        .lineToX(103)
-                        .turn(Math.toRadians(-90))
-                        .lineToY(-32)
-                        .turn(Math.toRadians(28))
-                        .build()
-        );
-        sleep(5000);
-        Actions.runBlocking(trajectoryActionChosen);
+//        tagId = detectTagID();
+//        telemetry.addData("Detected Tag ID after scanning", tagId);
+//
+//        String tagName = studioAprilTag.getTagName();
+//        if (tagName != null) {
+//            telemetry.addData("Tag Name", tagName);
+//        }
+//
+//        Position pos = studioAprilTag.getRobotPosition();
+//        YawPitchRollAngles ori = studioAprilTag.getRobotOrientation();
+//        if (pos != null && ori != null) {
+//            telemetry.addData("Robot X", "%.2f", pos.x);
+//            telemetry.addData("Robot Y", "%.2f", pos.y);
+//            telemetry.addData("Robot Z", "%.2f", pos.z);
+//            telemetry.addData("Robot Yaw", "%.2f", ori.getYaw(AngleUnit.DEGREES));
+//            telemetry.addData("Robot Pitch", "%.2f", ori.getPitch(AngleUnit.DEGREES));
+//            telemetry.addData("Robot Roll", "%.2f", ori.getRoll(AngleUnit.DEGREES));
+//        }
+//        telemetry.update();
+//
+//        Action trajectoryActionChosen;
+//        Pose2d currentPose = drive.localizer.getPose();
+//        if (tagId == 21) {
+//            trajectoryActionChosen = drive.actionBuilder(currentPose)
+//                    .splineTo(new Vector2d(71, 0), Math.toRadians(-90))
+//                    .lineToY(-48)
+//                    .waitSeconds(0.5)
+//                    .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
+//                    .build();
+//        } else if (tagId == 22) {
+//            trajectoryActionChosen = drive.actionBuilder(currentPose)
+//                    .lineToX(36)
+//                    .strafeTo(new Vector2d(36, 48))
+//                    .build();
+//        } else if (tagId == 23) {
+//            trajectoryActionChosen = drive.actionBuilder(currentPose)
+//                    .strafeTo(new Vector2d(46, 30))
+//                    .build();
+//        } else {
+//            trajectoryActionChosen = drive.actionBuilder(currentPose)
+//                    .waitSeconds(0.1)
+//                    .build();
+//        }
+//
+//        Actions.runBlocking(
+//                drive.actionBuilder(currentPose)
+//                        .lineToX(103)
+//                        .turn(Math.toRadians(-90))
+//                        .lineToY(-32)
+//                        .turn(Math.toRadians(28))
+//                        .build()
+//        );
+//        sleep(5000);
+//        Actions.runBlocking(trajectoryActionChosen);
 
         studioAprilTag.shutdown();
     }
@@ -132,5 +163,138 @@ public class StudioRunnerAuto extends LinearOpMode {
         List<AprilTagDetection> detections = studioAprilTag.getDetections();
         if (!detections.isEmpty()) return detections.get(0).id;
         return -1;
+    }
+
+    // === Mirrored methods from TeleOp ===
+    private boolean launcherSequenceBusy = false;
+
+    private void initiateLaunchSequence(double targetAugPos1, double targetAugPos2, double targetAugPos3) {
+        launcherSequenceBusy = true;
+        launcherFlywheel.setPower(1.0);
+
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition((int) targetAugPos1);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        launcherElevator.setPower(1.0);
+        sleep(2000);
+        launcherElevator.setPower(0);
+
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition((int) targetAugPos2);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        launcherElevator.setPower(1.0);
+        sleep(2000);
+        launcherElevator.setPower(0);
+
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition((int) targetAugPos3);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        launcherElevator.setPower(1.0);
+        sleep(2000);
+        launcherElevator.setPower(0);
+
+        sorter.setTargetPosition(0);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setPower(0);
+        launcherElevator.setPower(0);
+        launcherFlywheel.setPower(0);
+        launcherSequenceBusy = false;
+    }
+
+    private void defaultIntakeSequence() {
+        launcherSequenceBusy = true;
+        sorter.setPower(0);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+
+        sorter.setTargetPosition(0);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+        intakeServo.setPower(-1);
+        sleep(2000);
+
+        int pos2 = (int)(ticksPerRevolution / 3);
+        sorter.setTargetPosition(pos2);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(2000);
+
+        int pos3 = (int)((ticksPerRevolution * 2) / 3);
+        sorter.setTargetPosition(pos3);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(2000);
+
+        sorter.setTargetPosition(0);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(2000);
+
+        sorter.setPower(0);
+        intakeServo.setPower(0);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherSequenceBusy = false;
+    }
+    private void defaultLaunchSequence() {
+        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        launcherSequenceBusy = true;
+        launcherFlywheel.setVelocity(6000 * 537.7);
+        launcherElevator.setPower(-0.1);
+        sleep(3000 / 2);
+        sorter.setPower(0);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherElevator.setPower(1.0);
+
+        // Step 1: augPos3
+        sorter.setTargetPosition((int)augPos3);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.2);
+        sleep(1500 / 2);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(2000 / 2);
+        launcherElevator.setPower(-0.1);
+
+        // Step 2: augPos1
+        sorter.setTargetPosition((int)augPos1);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.2);
+        sleep(1500 / 2);
+        launcherElevator.setPower(1.0);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(2000 / 2);
+        launcherElevator.setPower(-0.1);
+
+        // Step 3: augPos2
+        sorter.setTargetPosition((int)augPos2);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.2);
+        sleep(1500 / 2);
+        launcherElevator.setPower(1.0);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sleep(2000 / 2);
+        launcherElevator.setPower(-0.1);
+
+        // Return to pos1
+        sorter.setTargetPosition(0);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);sorter.setPower(0.3);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+        sorter.setPower(0);
+        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherElevator.setPower(0);
+        launcherFlywheel.setPower(0);
+        launcherSequenceBusy = false;
     }
 }

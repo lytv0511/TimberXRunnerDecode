@@ -151,18 +151,18 @@ public class StudioTeleop extends LinearOpMode {
         // Move to pos1
         sorter.setTargetPosition(0);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
+        sorter.setPower(0.1);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
 
         // Intake on
-        intakeServo.setPower(1);
+        intakeServo.setPower(-1);
         sleep(2000);
 
         // Move to pos2 (120°)
         int pos2 = (int)(ticksPerRevolution / 3);
         sorter.setTargetPosition(pos2);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
+        sorter.setPower(0.1);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
         sleep(2000);
 
@@ -170,14 +170,14 @@ public class StudioTeleop extends LinearOpMode {
         int pos3 = (int)((ticksPerRevolution * 2) / 3);
         sorter.setTargetPosition(pos3);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
+        sorter.setPower(0.1);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
         sleep(2000);
 
         // Return to pos1
         sorter.setTargetPosition(0);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
+        sorter.setPower(0.1);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
         sleep(2000);
 
@@ -246,53 +246,101 @@ public class StudioTeleop extends LinearOpMode {
         sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         launcherSequenceBusy = true;
         launcherFlywheel.setVelocity(6000 * 537.7);
-        launcherElevator.setPower(-0.1);
-        sleep(3000 / 2);
+        launcherElevator.setPower(-1);
+        sleep(2000);
         sorter.setPower(0);
         sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        launcherElevator.setPower(-1.0);
+        sleep(1000);
 
         // Step 1: augPos3
         sorter.setTargetPosition((int)augPos3);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         sorter.setPower(0.2);
-        sleep(1500 / 2);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000 / 2);
-        launcherElevator.setPower(0.1);
+        sleep(1200);
+
 
         // Step 2: augPos1
         sorter.setTargetPosition((int)augPos1);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         sorter.setPower(0.2);
-        sleep(1500 / 2);
-        launcherElevator.setPower(-1.0);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000 / 2);
-        launcherElevator.setPower(0.1);
+        sleep(1550);
+
 
         // Step 3: augPos2
         sorter.setTargetPosition((int)augPos2);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.2);
-        sleep(1500 / 2);
-        launcherElevator.setPower(-1.0);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000 / 2);
-        launcherElevator.setPower(0.1);
+
 
         // Return to pos1
         sorter.setTargetPosition(0);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.3);
+        sorter.setPower(0.2);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-
-        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         sorter.setPower(0);
+        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherElevator.setPower(0);
         launcherFlywheel.setPower(0);
         launcherSequenceBusy = false;
     }
+
+    //         -------------Previous launcher--------------
+    // private void defaultLaunchSequence() {
+    //        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+    //        launcherSequenceBusy = true;
+    //        launcherFlywheel.setVelocity(6000 * 537.7);
+    //        launcherElevator.setPower(0.1);
+    //        sleep(3000 / 2);
+    //        sorter.setPower(0);
+    //        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    //        launcherElevator.setPower(-1.0);
+    //
+    //        // Step 1: augPos3
+    //        sorter.setTargetPosition((int)augPos3);
+    //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    //        sorter.setPower(0.2);
+    //        sleep(1500 / 2);
+    //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+    //        sleep(2000 / 2);
+    //        launcherElevator.setPower(0.1);
+    //
+    //        // Step 2: augPos1
+    //        sorter.setTargetPosition((int)augPos1);
+    //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    //        sorter.setPower(0.2);
+    //        sleep(1500 / 2);
+    //        launcherElevator.setPower(-1.0);
+    //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+    //        sleep(2000 / 2);
+    //        launcherElevator.setPower(0.1);
+    //
+    //        // Step 3: augPos2
+    //        sorter.setTargetPosition((int)augPos2);
+    //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    //        sorter.setPower(0.2);
+    //        sleep(1500 / 2);
+    //        launcherElevator.setPower(-1.0);
+    //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+    //        sleep(2000 / 2);
+    //        launcherElevator.setPower(0.1);
+    //
+    //        // Return to pos1
+    //        sorter.setTargetPosition(0);
+    //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    //        sorter.setPower(0.3);
+    //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+    //
+    //
+    //        sorter.setPower(0);
+    //        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+    //        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    //        launcherElevator.setPower(0);
+    //        launcherFlywheel.setPower(0);
+    //        launcherSequenceBusy = false;
+    //    }
 
     // === Intake/Sorter/Pattern helper methods ===
     private void readColorSensor() {
@@ -543,15 +591,24 @@ public class StudioTeleop extends LinearOpMode {
 
         // D-Pad Right
         if (gamepad1.dpad_right) {
+            launcherElevator.setPower(0.1);
             target = gamepad1.left_bumper ? pos3 : augPos3;
+            sleep(500);
+            launcherElevator.setPower(0);
         }
         // D-Pad Up
         if (gamepad1.dpad_up) {
+            launcherElevator.setPower(0.1);
             target = gamepad1.left_bumper ? pos2 : augPos2;
+            sleep(500);
+            launcherElevator.setPower(0);
         }
         // D-Pad Left
         if (gamepad1.dpad_left) {
+            launcherElevator.setPower(0.1);
             target = gamepad1.left_bumper ? pos1 : augPos1;
+            sleep(500);
+            launcherElevator.setPower(0);
         }
 
         // If any D-pad button pressed, move motor
@@ -559,7 +616,7 @@ public class StudioTeleop extends LinearOpMode {
             sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             sorter.setTargetPosition((int) target);
             sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.5);
+            sorter.setPower(0.3);
         }
 
         String targetPattern = detectedPattern;
@@ -616,8 +673,8 @@ public class StudioTeleop extends LinearOpMode {
         telemetry.addData("Sorter Busy", sorter.isBusy());
 
         if (!launcherSequenceBusy &&
-            sorter.getMode() == DcMotor.RunMode.RUN_TO_POSITION &&
-            !sorter.isBusy()) {
+                sorter.getMode() == DcMotor.RunMode.RUN_TO_POSITION &&
+                !sorter.isBusy()) {
             sorter.setPower(0);
             sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
