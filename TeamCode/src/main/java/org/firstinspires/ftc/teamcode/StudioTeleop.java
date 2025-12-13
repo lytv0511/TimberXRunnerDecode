@@ -140,50 +140,123 @@ public class StudioTeleop extends LinearOpMode {
     }
 
     /**
-     * Default Intake Sequence:
-     * pos1 → intake ON → 2 sec → pos2 → 2 sec → pos3 → return to pos1
+     * Cancel intake and reset pattern (manual hotkey X)
+     * Does NOT touch launcherFlywheel or launcherElevator power.
+     */
+    private void resetIntakeState() {
+        // stop sensing & intake
+        sensorActive = false;
+        intakeServo.setPower(0);
+
+        // stop sorter and return to pos1
+        sorter.setPower(0);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition(0);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sorter.setPower(0);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        // clear pattern and counters
+        ballCount = 0;
+        storePatternBuilder.setLength(0);
+        lastSensorColor = 0;
+
+        telemetry.addData("Stored Pattern", storePatternBuilder.toString());
+        telemetry.addData("Balls Loaded", ballCount);
+        telemetry.update();
+    }
+
+    /**
+     * Sensor-driven, interruptible intake sequence.
      */
     private void defaultIntakeSequence() {
+        // If another sequence is running, ignore
+        if (launcherSequenceBusy) return;
         launcherSequenceBusy = true;
-        sorter.setPower(0);
-        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        // Move to pos1
-        sorter.setTargetPosition(0);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.1);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        // prepare
+        launcherElevator.setPower(0.2);
+        sensorActive = true;
+        intakeServo.setPower(-1); // start intake
 
-        // Intake on
-        intakeServo.setPower(-1);
-        sleep(2000);
+        boolean initialAState = gamepad1.a; // capture current A state so a subsequent press can cancel
+        boolean canceled = false;
 
-        // Move to pos2 (120°)
-        int pos2 = (int)(ticksPerRevolution / 3);
-        sorter.setTargetPosition(pos2);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.1);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000);
+        // Ensure sorter starts at pos1
+//        sorter.setTargetPosition(0);
+//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//        sorter.setPower(0.3);
+//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+//        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//        moveSorterToPos3();
 
-        // Move to pos3 (240°)
-        int pos3 = (int)((ticksPerRevolution * 2) / 3);
-        sorter.setTargetPosition(pos3);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.1);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000);
+        // main loop: collect up to 3 balls unless interrupted
+        int lastHandledBallCount = 0;
+        while (opModeIsActive() && ballCount <= 3 && !canceled) {
+            // detect manual cancel (X or second A press)
+            if (gamepad1.x) {
+                canceled = true;
+                break;
+            }
+            boolean curA = gamepad1.a;
+            if (curA && !initialAState) {
+                // A was pressed again -> cancel
+                canceled = true;
+                break;
+            }
 
-        // Return to pos1
-        sorter.setTargetPosition(0);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.1);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000);
+            // read sensor (will update ballCount/storePatternBuilder)
+            readColorSensor();
 
-        sorter.setPower(0);
+            // if a new ball was detected, move sorter to next pos immediately
+            if (ballCount > lastHandledBallCount) {
+                if (ballCount == 1) {
+                    moveSorterToPos3();
+                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
+                } else if (ballCount == 2) {
+                    moveSorterToPos1();
+                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
+                } else if (ballCount == 3) {
+                    moveSorterToPos2();
+                } else if (ballCount >= 4) {
+                    break;
+                }
+                lastHandledBallCount += 1;
+            }
+
+            idle();
+        }
+
+        // stop intake & sensor
+        sensorActive = false;
         intakeServo.setPower(0);
-        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherElevator.setPower(0);
+
+        // If canceled by X (manual reset), clear pattern immediately
+        if (gamepad1.x || canceled) {
+            ballCount = 0;
+            storePatternBuilder.setLength(0);
+            lastSensorColor = 0;
+        }
+
+        // ensure sorter returns to pos1 (so launcher can read balls)
+//        sorter.setTargetPosition(0);
+//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//        sorter.setPower(0.3);
+//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+//        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//        sorter.setPower(0);
+//        moveSorterToPos3();
+//        intakeServo.setPower(-1);
+//        sleep(3000);
+        intakeServo.setPower(0);
+
+        telemetry.addData("Stored Pattern", storePatternBuilder.toString());
+        telemetry.addData("Balls Loaded", ballCount);
+        telemetry.update();
+
         launcherSequenceBusy = false;
     }
 
@@ -284,6 +357,10 @@ public class StudioTeleop extends LinearOpMode {
         sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherElevator.setPower(0);
         launcherFlywheel.setPower(0);
+        // clear stored intake pattern after launching
+        storePatternBuilder.setLength(0);
+        ballCount = 0;
+        lastSensorColor = 0;
         launcherSequenceBusy = false;
     }
 
@@ -376,18 +453,25 @@ public class StudioTeleop extends LinearOpMode {
         return 0; // default to no ball if ambiguous
     }
 
+    private void moveSorterToPos1() {
+        double pos2Encoder = 0; // 120°
+        sorter.setTargetPosition((int) pos2Encoder);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.2);
+    }
+
     private void moveSorterToPos2() {
         double pos2Encoder = ticksPerRevolution / 3; // 120°
         sorter.setTargetPosition((int) pos2Encoder);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
+        sorter.setPower(0.2);
     }
 
     private void moveSorterToPos3() {
         double pos3Encoder = (ticksPerRevolution * 2) / 3; // 240°
         sorter.setTargetPosition((int) pos3Encoder);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
+        sorter.setPower(0.2);
     }
 
     private void performLaunchSequence(String storePattern, String targetPattern) {
@@ -573,6 +657,11 @@ public class StudioTeleop extends LinearOpMode {
             defaultIntakeSequence();
         }
 
+        // Manual reset hotkey (X) - cancel intake & clear stored pattern instantly
+        if (gamepad1.x) {
+            resetIntakeState();
+        }
+
         if (gamepad1.b) {
             defaultLaunchSequence();
         }
@@ -690,6 +779,8 @@ public class StudioTeleop extends LinearOpMode {
         telemetry.addData("Trigger", triggerPower);
         telemetry.addData("Launcher1 Power", launcherFlywheel.getPower());
         telemetry.addData("Launcher2 Power", launcherElevator.getPower());
+        telemetry.addData("Stored Pattern", storePatternBuilder.toString());
+        telemetry.addData("Balls Loaded", ballCount);
         telemetry.update();
     }
 }

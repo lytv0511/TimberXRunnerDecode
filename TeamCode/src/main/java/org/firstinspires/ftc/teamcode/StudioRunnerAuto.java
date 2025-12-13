@@ -30,6 +30,15 @@ public class StudioRunnerAuto extends LinearOpMode {
     private com.qualcomm.robotcore.hardware.DcMotor sorter;
     private com.qualcomm.robotcore.hardware.CRServo intakeServo;
 
+    // Shared intake/sorter state copied from StudioTeleop
+    private boolean sensorActive = false;
+    private int ballCount = 0;
+    private StringBuilder storePatternBuilder = new StringBuilder();
+    private int lastSensorColor = 0;
+    private String detectedPattern = "Unknown";
+
+    private com.qualcomm.robotcore.hardware.ColorSensor colorSensor;
+
     private double ticksPerRevolution = 537.7;
     private double augPos1, augPos2, augPos3;
 
@@ -44,6 +53,7 @@ public class StudioRunnerAuto extends LinearOpMode {
         launcherElevator = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotor.class, "launcherElevator");
         sorter = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotor.class, "sorter");
         intakeServo = hardwareMap.get(com.qualcomm.robotcore.hardware.CRServo.class, "intakeServo");
+        colorSensor = hardwareMap.get(com.qualcomm.robotcore.hardware.ColorSensor.class, "colorSensor");
 
         sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
@@ -93,7 +103,7 @@ public class StudioRunnerAuto extends LinearOpMode {
                         .setTangent(Math.toRadians(0))   // heading right (x-positive)
                         .strafeTo(new Vector2d(0, 10))  // go left/right based on field coords
                         .setTangent(Math.toRadians(180)) // now we want to go backwards toward -X
-                        .lineToX(-50)                    // RR now has a valid heading
+                        .lineToX(-40)                    // RR now has a valid heading
                         .build()
         );
 
@@ -208,93 +218,153 @@ public class StudioRunnerAuto extends LinearOpMode {
         launcherSequenceBusy = false;
     }
 
-    private void defaultIntakeSequence() {
-        launcherSequenceBusy = true;
-        sorter.setPower(0);
-        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+private void defaultIntakeSequence() {
+    launcherSequenceBusy = true;
 
-        sorter.setTargetPosition(0);
-        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+    // Reset sorter to pos1
+    sorter.setPower(0);
+    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+    sorter.setTargetPosition(0);
+    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+    sorter.setPower(0.4);
+    while (sorter.isBusy() && opModeIsActive()) { idle(); }
+    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
 
-        intakeServo.setPower(-1);
-        sleep(2000);
+    // Reset counters
+    ballCount = 0;
+    storePatternBuilder.setLength(0);
+    lastSensorColor = 0;
 
-        int pos2 = (int)(ticksPerRevolution / 3);
-        sorter.setTargetPosition(pos2);
-        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000);
+    // Start intake and sensor tracking
+    sensorActive = true;
+    intakeServo.setPower(1);
 
-        int pos3 = (int)((ticksPerRevolution * 2) / 3);
-        sorter.setTargetPosition(pos3);
-        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000);
+    int lastHandled = 0;
 
-        sorter.setTargetPosition(0);
-        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.5);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000);
+    // Main loop until three balls detected
+    while (opModeIsActive() && ballCount < 3) {
+        readColorSensor();
 
-        sorter.setPower(0);
-        intakeServo.setPower(0);
-        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
-        launcherSequenceBusy = false;
+        // If a ball was detected, rotate sorter
+        if (ballCount > lastHandled) {
+            if (ballCount == 1) {
+                moveSorterToPos2();
+                while (sorter.isBusy() && opModeIsActive()) { idle(); }
+            } else if (ballCount == 2) {
+                moveSorterToPos3();
+                while (sorter.isBusy() && opModeIsActive()) { idle(); }
+            }
+            lastHandled = ballCount;
+        }
+
+        idle();
     }
+
+    // Stop intake when full
+    sensorActive = false;
+    intakeServo.setPower(0);
+
+    // Return sorter to pos1
+    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+    sorter.setTargetPosition(0);
+    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+    sorter.setPower(0.4);
+    while (sorter.isBusy() && opModeIsActive()) { idle(); }
+    sorter.setPower(0);
+    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+
+    launcherSequenceBusy = false;
+}
     private void defaultLaunchSequence() {
         sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         launcherSequenceBusy = true;
         launcherFlywheel.setVelocity(6000 * 537.7);
-        launcherElevator.setPower(-0.1);
-        sleep(3000 / 2);
+        launcherElevator.setPower(1);
+        sleep(2000);
         sorter.setPower(0);
         sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        launcherElevator.setPower(1.0);
+        sleep(1000);
 
         // Step 1: augPos3
         sorter.setTargetPosition((int)augPos3);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         sorter.setPower(0.2);
-        sleep(1500 / 2);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000 / 2);
-        launcherElevator.setPower(-0.1);
+        sleep(1200);
+
 
         // Step 2: augPos1
         sorter.setTargetPosition((int)augPos1);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         sorter.setPower(0.2);
-        sleep(1500 / 2);
-        launcherElevator.setPower(1.0);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000 / 2);
-        launcherElevator.setPower(-0.1);
+        sleep(1550);
+
 
         // Step 3: augPos2
         sorter.setTargetPosition((int)augPos2);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.2);
-        sleep(1500 / 2);
-        launcherElevator.setPower(1.0);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(2000 / 2);
-        launcherElevator.setPower(-0.1);
+
 
         // Return to pos1
         sorter.setTargetPosition(0);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);sorter.setPower(0.3);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.2);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-
         sorter.setPower(0);
         sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherElevator.setPower(0);
         launcherFlywheel.setPower(0);
         launcherSequenceBusy = false;
+    }
+    // === Intake/Sorter/Pattern helper methods ===
+    private int readBallColor() {
+        int r = colorSensor.red();
+        int g = colorSensor.green();
+        int b = colorSensor.blue();
+        int threshold = 30;
+        if (r+g+b < threshold) return 0;
+        if (g > r && g > b) return 1;
+        if (r > g && b > g) return 2;
+        return 0;
+    }
+
+    private void readColorSensor() {
+        if (!sensorActive || ballCount >= 3) return;
+        int colorId = readBallColor();
+        if (colorId != 0 && colorId != lastSensorColor) {
+            char c = (colorId == 1) ? 'G' : 'P';
+            storePatternBuilder.append(c);
+            ballCount++;
+            lastSensorColor = colorId;
+        }
+        if (colorId == 0) lastSensorColor = 0;
+    }
+
+    private void moveSorterToPos2() {
+        double pos2Enc = ticksPerRevolution / 3;
+        sorter.setTargetPosition((int) pos2Enc);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+    }
+
+    private void moveSorterToPos3() {
+        double pos3Enc = (ticksPerRevolution * 2) / 3;
+        sorter.setTargetPosition((int) pos3Enc);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+    }
+
+    private void performLaunchSequence(String storePattern, String targetPattern) {
+        // Minimal stub: choose direct call
+        initiateLaunchSequence(augPos1, augPos2, augPos3);
+        sorter.setTargetPosition(0);
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+        sensorActive = true;
     }
 }
