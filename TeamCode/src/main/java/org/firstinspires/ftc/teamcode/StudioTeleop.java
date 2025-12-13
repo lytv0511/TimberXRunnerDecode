@@ -194,7 +194,7 @@ public class StudioTeleop extends LinearOpMode {
 
         // main loop: collect up to 3 balls unless interrupted
         int lastHandledBallCount = 0;
-        while (opModeIsActive() && ballCount <= 3 && !canceled) {
+        while (opModeIsActive() && ballCount < 4 && !canceled) {
             // detect manual cancel (X or second A press)
             if (gamepad1.x) {
                 canceled = true;
