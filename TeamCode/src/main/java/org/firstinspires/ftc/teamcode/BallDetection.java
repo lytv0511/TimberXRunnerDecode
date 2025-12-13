@@ -16,15 +16,31 @@ import java.util.List;
 @TeleOp(name = "Ball Detection")
 public class BallDetection extends LinearOpMode
 {
-    public static final double objectWidthInRealWorldUnits = 5;  // Replace with the actual width of the object in real-world units
+    public static final double objectWidthInRealWorldUnits = 5;
     public static final double width = 60;
     public static final double focalLength = 360;
     double leftZone = width / 3; // ~106 px
     double rightZone = 2 * width / 3; // ~213 px
+    private ColorBlobLocatorProcessor greenLocator;
+    private ColorBlobLocatorProcessor purpleLocator;
 
+    double zone;  // 0- left,  1 - center,   2- right,  -1 - not found
+    double extraDistance = 5;
+    double x;
     private static double getDistance( double width){
         double distance = (objectWidthInRealWorldUnits * focalLength) / width;
         return distance;
+    }
+
+    public void Zone(double x){
+
+        if (x>200){
+            telemetry.addData("Zone:", "RIGHT" );
+            zone = 2;
+        } else if (x<110) {
+            telemetry.addData("Zone:", "LEFT" );
+            zone = 0;
+        }
     }
 
     @Override
@@ -72,36 +88,37 @@ public class BallDetection extends LinearOpMode
                     ColorBlobLocatorProcessor.BlobCriteria.BY_CONTOUR_AREA,
                     200, 20000, purpleBlobs);
 
+
             for (ColorBlobLocatorProcessor.Blob p : purpleBlobs)
             {
                 RotatedRect box = p.getBoxFit();
-                double x = box.center.x;
+
                 double pixelWidthP = Math.max(box.size.width, box.size.height);
-                if (x<= rightZone)
-                    telemetry.addData("Purple",
-                            "Distance: %.2f  Y: %.2f  Area: %d",
-                            (getDistance(pixelWidthP) / 2.0) * (5.0 / 3.0),
-                            getDistance(pixelWidthP),
-                            p.getContourArea());
+                telemetry.addData("Purple",
+                        "Distance: %.2f  Y: %.2f  Area: %d",
+                        (getDistance(pixelWidthP) / 2.0) * (5.0 / 3.0)-2,
+                        getDistance(pixelWidthP),
+                        p.getContourArea());
             }
 
             for (ColorBlobLocatorProcessor.Blob g : greenBlobs)
             {
                 RotatedRect box = g.getBoxFit();
                 double pixelWidthG = Math.max(box.size.width, box.size.height);
-
+                x = box.center.x;
 
                 telemetry.addData("Green",
                         "Distance: %.2f  Y: %.2f  Area: %d",
-                        (getDistance(pixelWidthG) / 2.0) * (5.0 / 3.0),
+                        (getDistance(pixelWidthG) / 2.0) * (5.0 / 3.0)-2,
                         getDistance(pixelWidthG),
                         g.getContourArea());
             }
 
             telemetry.update();
             sleep(50);
+            }
         }
     }
-}
+
 
 

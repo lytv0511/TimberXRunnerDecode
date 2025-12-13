@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.util.Size;
+
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.Position;
@@ -9,6 +11,9 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+import org.firstinspires.ftc.vision.opencv.ColorBlobLocatorProcessor;
+import org.firstinspires.ftc.vision.opencv.ColorRange;
+import org.firstinspires.ftc.vision.opencv.ImageRegion;
 
 import java.util.List;
 
@@ -16,6 +21,8 @@ public class StudioAprilTag {
 
     private AprilTagProcessor aprilTag;
     private VisionPortal visionPortal;
+    private ColorBlobLocatorProcessor greenBlobProcessor; // NEW FIELD
+    private ColorBlobLocatorProcessor purpleBlobProcessor;
 
     // Localization fields
     private Position lastPosition = null;
@@ -31,13 +38,41 @@ public class StudioAprilTag {
                 .setCameraPose(cameraPosition, cameraOrientation)
                 .build();
 
-        VisionPortal.Builder builder = new VisionPortal.Builder();
-        builder.setCamera(hwMap.get(WebcamName.class, cameraName));
-        builder.addProcessor(aprilTag);
+        greenBlobProcessor = new ColorBlobLocatorProcessor.Builder()
+                .setTargetColorRange(ColorRange.ARTIFACT_GREEN) // <--- SET BALL COLOR HERE
+                .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)
+                .setRoi(ImageRegion.entireFrame())       // search entire camera view
+                .setDrawContours(true)
+                .setBlurSize(5)
+                .build();
+
+        purpleBlobProcessor = new ColorBlobLocatorProcessor.Builder()
+                .setTargetColorRange(ColorRange.ARTIFACT_PURPLE) // <--- SET BALL COLOR HERE
+                .setContourMode(ColorBlobLocatorProcessor.ContourMode.EXTERNAL_ONLY)
+                .setRoi(ImageRegion.entireFrame())       // search entire camera view
+                .setDrawContours(true)
+                .setBlurSize(5)
+                .build();
+
+
+        VisionPortal.Builder builder = new VisionPortal.Builder()
+        .setCameraResolution(new Size(320, 240))
+        .setCamera(hwMap.get(WebcamName.class, cameraName))
+        .addProcessor(aprilTag)
+        .addProcessor(greenBlobProcessor)
+        .addProcessor(purpleBlobProcessor);
         visionPortal = builder.build();
         visionPortal.resumeStreaming();
     }
 
+
+    public ColorBlobLocatorProcessor getGreenProcessor() {
+        return greenBlobProcessor;
+    }
+
+    public ColorBlobLocatorProcessor getPurpleProcessor() {
+        return purpleBlobProcessor;
+    }
     public List<AprilTagDetection> getDetections() {
         if (aprilTag != null) {
             return aprilTag.getDetections();
