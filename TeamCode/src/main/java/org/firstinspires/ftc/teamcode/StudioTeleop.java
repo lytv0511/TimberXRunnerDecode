@@ -645,7 +645,7 @@ public class StudioTeleop extends LinearOpMode {
         double launcherTrigger = 0;
 
         if (gamepad1.right_bumper) {
-            intakeServo.setPower(1);
+            intakeServo.setPower(-1);
         } else if (gamepad1.left_bumper) {
             intakeServo.setPower(0);
         }
