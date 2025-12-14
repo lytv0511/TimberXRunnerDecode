@@ -10,6 +10,7 @@ import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
@@ -110,6 +111,15 @@ public class StudioRunnerAuto extends LinearOpMode {
         sleep(500);
 
         defaultLaunchSequence();
+
+        Pose2d currentPos = drive.localizer.getPose();
+        Actions.runBlocking(
+                drive.actionBuilder(currentPos)
+                        .turn(Math.toRadians(45))
+                        .lineToY(50)
+                        .turn(Math.toRadians(-45))
+                        .build()
+        );
 
 //        tagId = detectTagID();
 //        telemetry.addData("Detected Tag ID after scanning", tagId);
@@ -275,50 +285,90 @@ private void defaultIntakeSequence() {
 
     launcherSequenceBusy = false;
 }
+
     private void defaultLaunchSequence() {
-        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         launcherSequenceBusy = true;
-        launcherFlywheel.setVelocity(6000 * 537.7);
-        launcherElevator.setPower(1);
-        sleep(2000);
-        sorter.setPower(0);
-        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        sleep(1000);
 
-        // Step 1: augPos3
-        sorter.setTargetPosition((int)augPos3);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.2);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(1500);
+        // --- Configure flywheel PIDF ---
+        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherFlywheel.setPIDFCoefficients(
+                launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
 
+        double targetVelocity = 53770; // ticks/sec, adjust as needed
+        launcherFlywheel.setVelocity(targetVelocity);
 
-        // Step 2: augPos1
-        sorter.setTargetPosition((int)augPos1);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.2);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(1900);
+        // --- Ball positions ---
+        double[] augPositions = {augPos3, augPos1 - 30, augPos2};
 
+        for (double augPos : augPositions) {
+            // Wait for flywheel to reach near target speed
+            // **FIX 1: Increased max wait time (2.0s -> 3.0s)**
+            ElapsedTime spinTimer = new ElapsedTime();
+            spinTimer.reset();
+            while (opModeIsActive() &&
+                    Math.abs(launcherFlywheel.getVelocity() - targetVelocity) > 1500 &&
+                    spinTimer.seconds() < 3.0) { // Increased max wait for stability
+                idle();
+            }
 
-        // Step 3: augPos2
-        sorter.setTargetPosition((int)augPos2);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+            // Move sorter to the ball
+            sorter.setTargetPosition((int) augPos);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.3); // Increased sorter power slightly (0.2 -> 0.3)
 
+            // Wait for sorter to move
+            while (sorter.isBusy() && opModeIsActive()) {
+                idle();
+            }
 
-        // Return to pos1
+            // **FIX 2: Stricter wait for sorter alignment (essential for precision)**
+            // Wait until the sorter is within a small tolerance of the target position
+            // to ensure alignment is complete before feeding the ball.
+            ElapsedTime alignmentTimer = new ElapsedTime();
+            alignmentTimer.reset();
+            int tolerance = 10; // Adjust this tolerance (in ticks) as needed
+
+            while (opModeIsActive() &&
+                    Math.abs(sorter.getCurrentPosition() - (int)augPos) > tolerance &&
+                    alignmentTimer.seconds() < 0.5) { // Max wait for fine alignment
+                idle();
+            }
+
+            // Ensure motor is stopped after alignment for no drift
+            sorter.setPower(0);
+
+            // Feed ball using elevator
+            launcherElevator.setPower(-1.0); // tuned feed power
+            ElapsedTime feedTimer = new ElapsedTime();
+            feedTimer.reset();
+
+            // **FIX 3: Increased feed duration (0.5s -> 0.7s)**
+            // This ensures a strong, complete ejection of all three balls.
+            while (feedTimer.seconds() < 0.7 && opModeIsActive()) {
+                idle();
+            }
+            launcherElevator.setPower(0);
+        }
+
+        // Return sorter to position 0
         sorter.setTargetPosition(0);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.2);
+        sorter.setPower(0.3);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sorter.setPower(0);
-        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        launcherElevator.setPower(0);
+
+        // Stop all motors safely
         launcherFlywheel.setPower(0);
+        launcherElevator.setPower(0);
+        sorter.setPower(0);
+
         launcherSequenceBusy = false;
+
+        // Reset intake counters
+        storePatternBuilder.setLength(0);
+        ballCount = 0;
+        lastSensorColor = 0;
     }
+
     // === Intake/Sorter/Pattern helper methods ===
     private int readBallColor() {
         int r = colorSensor.red();
