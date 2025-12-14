@@ -298,29 +298,53 @@ public class StudioTeleop extends LinearOpMode {
         launcherFlywheel.setVelocity(targetVelocity);
 
         // --- Ball positions ---
-        double[] augPositions = {augPos3 - 30, augPos1 - 30, augPos2 - 30};
+        double[] augPositions = {augPos3, augPos1 - 30, augPos2};
 
         for (double augPos : augPositions) {
             // Wait for flywheel to reach near target speed
+            // **FIX 1: Increased max wait time (2.0s -> 3.0s)**
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
                     Math.abs(launcherFlywheel.getVelocity() - targetVelocity) > 1500 &&
-                    spinTimer.seconds() < 2.0) {
+                    spinTimer.seconds() < 3.0) { // Increased max wait for stability
                 idle();
             }
 
             // Move sorter to the ball
             sorter.setTargetPosition((int) augPos);
             sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.2);
-            while (sorter.isBusy() && opModeIsActive()) { idle(); }
+            sorter.setPower(0.3); // Increased sorter power slightly (0.2 -> 0.3)
+
+            // Wait for sorter to move
+            while (sorter.isBusy() && opModeIsActive()) {
+                idle();
+            }
+
+            // **FIX 2: Stricter wait for sorter alignment (essential for precision)**
+            // Wait until the sorter is within a small tolerance of the target position
+            // to ensure alignment is complete before feeding the ball.
+            ElapsedTime alignmentTimer = new ElapsedTime();
+            alignmentTimer.reset();
+            int tolerance = 10; // Adjust this tolerance (in ticks) as needed
+
+            while (opModeIsActive() &&
+                    Math.abs(sorter.getCurrentPosition() - (int)augPos) > tolerance &&
+                    alignmentTimer.seconds() < 0.5) { // Max wait for fine alignment
+                idle();
+            }
+
+            // Ensure motor is stopped after alignment for no drift
+            sorter.setPower(0);
 
             // Feed ball using elevator
             launcherElevator.setPower(-1.0); // tuned feed power
             ElapsedTime feedTimer = new ElapsedTime();
             feedTimer.reset();
-            while (feedTimer.seconds() < 0.5 && opModeIsActive()) { // feed duration
+
+            // **FIX 3: Increased feed duration (0.5s -> 0.7s)**
+            // This ensures a strong, complete ejection of all three balls.
+            while (feedTimer.seconds() < 0.7 && opModeIsActive()) {
                 idle();
             }
             launcherElevator.setPower(0);
@@ -329,7 +353,7 @@ public class StudioTeleop extends LinearOpMode {
         // Return sorter to position 0
         sorter.setTargetPosition(0);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.2);
+        sorter.setPower(0.3);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
 
         // Stop all motors safely
