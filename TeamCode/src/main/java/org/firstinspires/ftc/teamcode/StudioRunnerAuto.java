@@ -290,7 +290,7 @@ private void defaultIntakeSequence() {
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         sorter.setPower(0.2);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(1200);
+        sleep(1500);
 
 
         // Step 2: augPos1
@@ -298,7 +298,7 @@ private void defaultIntakeSequence() {
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         sorter.setPower(0.2);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(1550);
+        sleep(1900);
 
 
         // Step 3: augPos2

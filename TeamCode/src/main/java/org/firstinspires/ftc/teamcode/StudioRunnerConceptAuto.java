@@ -39,8 +39,12 @@ public class StudioRunnerConceptAuto extends LinearOpMode {
     private com.qualcomm.robotcore.hardware.DcMotor sorter;
     private com.qualcomm.robotcore.hardware.CRServo intakeServo;
 
+    private MecanumDrive drive;
+
     private double ticksPerRevolution = 537.7;
     private double augPos1, augPos2, augPos3;
+
+    boolean ball = false;
 
 //    private ColorBlobLocatorProcessor greenLocator;
 //    private ColorBlobLocatorProcessor purpleLocator;
@@ -153,18 +157,26 @@ public class StudioRunnerConceptAuto extends LinearOpMode {
 
         sleep(500);
 
-        defaultLaunchSequence();
+//        defaultLaunchSequence();
 
         sleep(5000);
 
         Actions.runBlocking(
-                drive.actionBuilder(new Pose2d(0, 0, 0))
-                        .turn(Math.toRadians(-45))
-                        .lineToX(10)
+                drive.actionBuilder( new Pose2d(0, 0, 0))
+                        .setTangent(Math.toRadians(0))
+                        .strafeTo(new Vector2d(0, 20))
+                        .lineToY(10)
                         .build()
         );
 
-        DetectBalls();
+
+        while (opModeIsActive()){
+            DetectBalls();
+
+        }
+
+
+
 
 // **************************************************************************************************************
 //*********************************************************************************************************************
@@ -252,9 +264,23 @@ public class StudioRunnerConceptAuto extends LinearOpMode {
         double distance = (objectWidthInRealWorldUnits * focalLength) / width;
         return distance;
     }
+    public void FollowBall(){
 
+        while (getZone(x) !=0 && getZone(x) != 2){
+
+            Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+                            .setTangent(Math.toRadians(0))   // heading right (x-positive)
+                            .strafeTo(new Vector2d(0, 10))  // go left/right based on field coords
+                            .setTangent(Math.toRadians(180)) // now we want to go backwards toward -X
+                            .lineToX(-50)                    // RR now has a valid heading
+                            .build()
+            );
+        }
+    }
     void DetectBalls(){
-
+        telemetry.update();
+        ball = false;
+        sleep(50);
         List<ColorBlobLocatorProcessor.Blob> greenBlobs = greenLocator.getBlobs();
         List<ColorBlobLocatorProcessor.Blob> purpleBlobs = purpleLocator.getBlobs();
 
@@ -271,6 +297,7 @@ public class StudioRunnerConceptAuto extends LinearOpMode {
             RotatedRect box = p.getBoxFit();
             getZone(box.center.x);
             double pixelWidthP = Math.max(box.size.width, box.size.height);
+            ball = true;
             telemetry.addData("Purple",
                     "Distance: %.2f  Y: %.2f  Area: %d",
                     (getDistance(pixelWidthP) / 2.0) * (5.0 / 3.0)-2,
@@ -282,6 +309,7 @@ public class StudioRunnerConceptAuto extends LinearOpMode {
         {
             RotatedRect box = g.getBoxFit();
             double pixelWidthG = Math.max(box.size.width, box.size.height);
+            ball = true;
             getZone(box.center.x);
             telemetry.addData("Green",
                     "Distance: %.2f  Y: %.2f  Area: %d",
@@ -295,7 +323,6 @@ public class StudioRunnerConceptAuto extends LinearOpMode {
     }
 
 // ***************************************************************************************************
-
 
     // === Mirrored methods from TeleOp ===
     private boolean launcherSequenceBusy = false;
