@@ -301,7 +301,7 @@ public class StudioTeleop extends LinearOpMode {
         double[] augPositions = {augPos3 - 30, augPos1 - 30, augPos2 - 30};
 
         for (double augPos : augPositions) {
-            // Wait for flywheel to reach near target speed
+            // Wait for flywheel to reach near target speed----
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
@@ -345,7 +345,6 @@ public class StudioTeleop extends LinearOpMode {
         lastSensorColor = 0;
     }
 
-    // === Intake/Sorter/Pattern helper methods ===
     private void readColorSensor() {
         if (!sensorActive || ballCount >= 3) return;
 
