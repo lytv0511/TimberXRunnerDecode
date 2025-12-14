@@ -1,5 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.Vector2d;
+import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -51,6 +54,9 @@ public class StudioTeleop extends LinearOpMode {
     private AprilTagProcessor aprilTag;
 
     private String detectedPattern = "Unknown";
+
+    private boolean lastDpadUpState = false;
+    private boolean lastDpadDownState = false;
 
     private static class DirectTagInfo {
         int id;
@@ -288,6 +294,8 @@ public class StudioTeleop extends LinearOpMode {
      */
     private void defaultLaunchSequence() {
         launcherSequenceBusy = true;
+        final double MOVEMENT_DISTANCE = 2.5; // Distance to move in inches per D-pad press
+        final double DRIVE_POWER = 0.4;
 
         // --- Configure flywheel PIDF ---
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -307,7 +315,27 @@ public class StudioTeleop extends LinearOpMode {
             spinTimer.reset();
             while (opModeIsActive() &&
                     Math.abs(launcherFlywheel.getVelocity() - targetVelocity) > 1500 &&
-                    spinTimer.seconds() < 3.0) { // Increased max wait for stability
+                    spinTimer.seconds() < 2.0) // was 3
+            { // Increased max wait for stability
+
+                boolean currentDpadUp = gamepad1.dpad_up;
+                boolean currentDpadDown = gamepad1.dpad_down;
+
+                if (currentDpadUp && !lastDpadUpState) {
+                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+                                    .lineToX(MOVEMENT_DISTANCE)                    // RR now has a valid heading
+                                    .build());
+                    sleep(300); // Temporary placeholder to simulate blocking movement
+                } else if (currentDpadDown && !lastDpadDownState) {
+                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+                            .lineToX(-MOVEMENT_DISTANCE)                    // RR now has a valid heading
+                            .build());
+                    sleep(300); // Temporary placeholder to simulate blocking movement
+                }
+
+                lastDpadUpState = currentDpadUp;
+                lastDpadDownState = currentDpadDown;
+
                 idle();
             }
 
