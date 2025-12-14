@@ -13,6 +13,7 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.List;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
 @TeleOp(name="StudioTeleop", group="TeleOp")
 public class StudioTeleop extends LinearOpMode {
@@ -33,6 +34,14 @@ public class StudioTeleop extends LinearOpMode {
     private double augPos3 = ticksPerRevolution / 6;      // 60°
 
     private DcMotorEx launcherFlywheel;
+    // === Flywheel PID (intake mode) ===
+    private double flywheelKp = 0.00015;
+    private double flywheelKi = 0.0000008;
+    private double flywheelKd = 0.00002;
+
+    private double flywheelIntegral = 0;
+    private double flywheelLastError = 0;
+    private ElapsedTime flywheelTimer = new ElapsedTime();
     private DcMotor launcherElevator;
 
     private VisionPortal visionPortal;
@@ -178,6 +187,7 @@ public class StudioTeleop extends LinearOpMode {
 
         // prepare
         launcherElevator.setPower(0.2);
+        launcherFlywheel.setPower(0);
         sensorActive = true;
         intakeServo.setPower(-1); // start intake
 
@@ -195,6 +205,16 @@ public class StudioTeleop extends LinearOpMode {
         // main loop: collect up to 3 balls unless interrupted
         int lastHandledBallCount = 0;
         while (opModeIsActive() && ballCount < 4 && !canceled) {
+            // === Allow driving while intake sequence is running ===
+            double driveY = -gamepad1.left_stick_y;
+            double driveX = -gamepad1.left_stick_x;
+            double turn = -gamepad1.right_stick_x;
+
+            drive.setDrivePowers(new com.acmerobotics.roadrunner.PoseVelocity2d(
+                    new com.acmerobotics.roadrunner.Vector2d(driveY, driveX),
+                    turn
+            ));
+
             // detect manual cancel (X or second A press)
             if (gamepad1.x) {
                 canceled = true;
@@ -233,6 +253,7 @@ public class StudioTeleop extends LinearOpMode {
         sensorActive = false;
         intakeServo.setPower(0);
         launcherElevator.setPower(0);
+        launcherFlywheel.setPower(0);
 
         // If canceled by X (manual reset), clear pattern immediately
         if (gamepad1.x || canceled) {
@@ -262,162 +283,67 @@ public class StudioTeleop extends LinearOpMode {
 
     /**
      * Default Launch Sequence:
-     * flywheel ON → augPos1 → elevator ON → augPos2 → 1 sec → augPos3 → return to pos1
+     * Uses PIDF velocity control for flywheel and launches each ball only when at target speed.
+     * No sleeps, uses velocity checks for consistent launching.
      */
-//    private void defaultLaunchSequence() {
-//        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-//        launcherSequenceBusy = true;
-//        launcherFlywheel.setVelocity(6000 * 537.7);
-//        sleep(3000);
-//        sorter.setPower(0);
-//        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-//        launcherElevator.setPower(-1.0);
-//
-//        // Step 1: augPos3
-//        sorter.setTargetPosition((int)augPos3 - 30);
-//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        sorter.setPower(0.2);
-//        sleep(1500);
-//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-//        sleep(2000);
-//        launcherElevator.setPower(0.1);
-//
-//        // Step 2: augPos1
-//        sorter.setTargetPosition((int)augPos1 - 30);
-//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        sorter.setPower(0.2);
-//        sleep(1500);
-//        launcherElevator.setPower(-1.0);
-//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-//        sleep(2000);
-//        launcherElevator.setPower(0.1);
-//
-//        // Step 3: augPos2
-//        sorter.setTargetPosition((int)augPos2 - 30);
-//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        sorter.setPower(0.2);
-//        sleep(1500);
-//        launcherElevator.setPower(-1.0);
-//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-//        sleep(2000);
-//        launcherElevator.setPower(0.1);
-//
-//        // Return to pos1
-//        sorter.setTargetPosition(0);
-//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        sorter.setPower(0.3);
-//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-//
-//        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-//        sorter.setPower(0);
-//        launcherElevator.setPower(0);
-//        launcherFlywheel.setPower(0);
-//        launcherSequenceBusy = false;
-//    }
-
     private void defaultLaunchSequence() {
-        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         launcherSequenceBusy = true;
-        launcherFlywheel.setVelocity(6000 * 537.7);
-        launcherElevator.setPower(-1);
-        sleep(2000);
-        sorter.setPower(0);
-        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        sleep(1000);
 
-        // Step 1: augPos3
-        sorter.setTargetPosition((int)augPos3);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.2);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(1200);
+        // --- Configure flywheel PIDF ---
+        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherFlywheel.setPIDFCoefficients(
+                launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
 
+        double targetVelocity = 53770; // ticks/sec, adjust as needed
+        launcherFlywheel.setVelocity(targetVelocity);
 
-        // Step 2: augPos1
-        sorter.setTargetPosition((int)augPos1);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.2);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sleep(1550);
+        // --- Ball positions ---
+        double[] augPositions = {augPos3 - 30, augPos1 - 30, augPos2 - 30};
 
+        for (double augPos : augPositions) {
+            // Wait for flywheel to reach near target speed
+            ElapsedTime spinTimer = new ElapsedTime();
+            spinTimer.reset();
+            while (opModeIsActive() &&
+                    Math.abs(launcherFlywheel.getVelocity() - targetVelocity) > 1500 &&
+                    spinTimer.seconds() < 2.0) {
+                idle();
+            }
 
-        // Step 3: augPos2
-        sorter.setTargetPosition((int)augPos2);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+            // Move sorter to the ball
+            sorter.setTargetPosition((int) augPos);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.2);
+            while (sorter.isBusy() && opModeIsActive()) { idle(); }
 
+            // Feed ball using elevator
+            launcherElevator.setPower(-1.0); // tuned feed power
+            ElapsedTime feedTimer = new ElapsedTime();
+            feedTimer.reset();
+            while (feedTimer.seconds() < 0.5 && opModeIsActive()) { // feed duration
+                idle();
+            }
+            launcherElevator.setPower(0);
+        }
 
-        // Return to pos1
+        // Return sorter to position 0
         sorter.setTargetPosition(0);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         sorter.setPower(0.2);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
-        sorter.setPower(0);
-        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        launcherElevator.setPower(0);
+
+        // Stop all motors safely
         launcherFlywheel.setPower(0);
-        // clear stored intake pattern after launching
+        launcherElevator.setPower(0);
+        sorter.setPower(0);
+
+        launcherSequenceBusy = false;
+
+        // Reset intake counters
         storePatternBuilder.setLength(0);
         ballCount = 0;
         lastSensorColor = 0;
-        launcherSequenceBusy = false;
     }
-
-    //         -------------Previous launcher--------------
-    // private void defaultLaunchSequence() {
-    //        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-    //        launcherSequenceBusy = true;
-    //        launcherFlywheel.setVelocity(6000 * 537.7);
-    //        launcherElevator.setPower(0.1);
-    //        sleep(3000 / 2);
-    //        sorter.setPower(0);
-    //        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-    //        launcherElevator.setPower(-1.0);
-    //
-    //        // Step 1: augPos3
-    //        sorter.setTargetPosition((int)augPos3);
-    //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-    //        sorter.setPower(0.2);
-    //        sleep(1500 / 2);
-    //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-    //        sleep(2000 / 2);
-    //        launcherElevator.setPower(0.1);
-    //
-    //        // Step 2: augPos1
-    //        sorter.setTargetPosition((int)augPos1);
-    //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-    //        sorter.setPower(0.2);
-    //        sleep(1500 / 2);
-    //        launcherElevator.setPower(-1.0);
-    //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-    //        sleep(2000 / 2);
-    //        launcherElevator.setPower(0.1);
-    //
-    //        // Step 3: augPos2
-    //        sorter.setTargetPosition((int)augPos2);
-    //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-    //        sorter.setPower(0.2);
-    //        sleep(1500 / 2);
-    //        launcherElevator.setPower(-1.0);
-    //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-    //        sleep(2000 / 2);
-    //        launcherElevator.setPower(0.1);
-    //
-    //        // Return to pos1
-    //        sorter.setTargetPosition(0);
-    //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-    //        sorter.setPower(0.3);
-    //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-    //
-    //
-    //        sorter.setPower(0);
-    //        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-    //        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-    //        launcherElevator.setPower(0);
-    //        launcherFlywheel.setPower(0);
-    //        launcherSequenceBusy = false;
-    //    }
 
     // === Intake/Sorter/Pattern helper methods ===
     private void readColorSensor() {
@@ -768,8 +694,12 @@ public class StudioTeleop extends LinearOpMode {
             sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         }
 
-        // Set both launchers to that power
-        launcherFlywheel.setPower(triggerPower);
+        // Launcher flywheel: only allow manual control when not running launch sequence
+        if (!launcherSequenceBusy) {
+            launcherFlywheel.setPower(triggerPower);
+        }
+
+        // Launcher elevator: manual control is always allowed
         if (gamepad1.right_bumper) {
             launcherElevator.setPower(launcherTrigger);
         } else {
