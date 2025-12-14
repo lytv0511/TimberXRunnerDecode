@@ -43,6 +43,7 @@ public class StudioRunnerAuto extends LinearOpMode {
     private double ticksPerRevolution = 537.7;
     private double augPos1, augPos2, augPos3;
 
+    double targetVelocity = 53770;
     @Override
     public void runOpMode() throws InterruptedException {
         MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
@@ -66,6 +67,14 @@ public class StudioRunnerAuto extends LinearOpMode {
 
         telemetry.addLine("Initialized. Waiting for start...");
         telemetry.update();
+
+
+        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherFlywheel.setPIDFCoefficients(
+                launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
+
+        launcherFlywheel.setVelocity(targetVelocity);
+
 
         int tagId;
         while (!isStarted() && !isStopRequested()) {
@@ -115,11 +124,21 @@ public class StudioRunnerAuto extends LinearOpMode {
         Pose2d currentPos = drive.localizer.getPose();
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
-                        .turn(Math.toRadians(45))
-                        .lineToY(50)
-                        .turn(Math.toRadians(-45))
+                        .turn(Math.toRadians(105))
+                        .lineToY(57)
+                        .turn(Math.toRadians(-105))
                         .build()
         );
+
+        Actions.runBlocking(
+                drive.actionBuilder(currentPos)
+                        .turn(Math.toRadians(105))
+                        .lineToY(57)
+                        .turn(Math.toRadians(-105))
+                        .build()
+        );
+
+
 
 //        tagId = detectTagID();
 //        telemetry.addData("Detected Tag ID after scanning", tagId);
@@ -290,12 +309,12 @@ private void defaultIntakeSequence() {
         launcherSequenceBusy = true;
 
         // --- Configure flywheel PIDF ---
-        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        launcherFlywheel.setPIDFCoefficients(
-                launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
-
-        double targetVelocity = 53770; // ticks/sec, adjust as needed
-        launcherFlywheel.setVelocity(targetVelocity);
+//        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//        launcherFlywheel.setPIDFCoefficients(
+//                launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
+//
+//        double targetVelocity = 53770; // ticks/sec, adjust as needed
+//        launcherFlywheel.setVelocity(targetVelocity);
 
         // --- Ball positions ---
         double[] augPositions = {augPos3, augPos1 - 30, augPos2};
@@ -307,7 +326,7 @@ private void defaultIntakeSequence() {
             spinTimer.reset();
             while (opModeIsActive() &&
                     Math.abs(launcherFlywheel.getVelocity() - targetVelocity) > 1500 &&
-                    spinTimer.seconds() < 3.0) { // Increased max wait for stability
+                    spinTimer.seconds() < 1) { // Increased max wait for stability
                 idle();
             }
 
@@ -338,7 +357,7 @@ private void defaultIntakeSequence() {
             sorter.setPower(0);
 
             // Feed ball using elevator
-            launcherElevator.setPower(-1.0); // tuned feed power
+            launcherElevator.setPower(1.0); // tuned feed power
             ElapsedTime feedTimer = new ElapsedTime();
             feedTimer.reset();
 
