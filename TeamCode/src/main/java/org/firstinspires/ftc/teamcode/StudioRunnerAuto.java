@@ -5,11 +5,14 @@ import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.PoseVelocity2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -21,15 +24,17 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 import java.util.List;
 
-@Autonomous(name="StudioRunnerAuto", group = "Autonomous")
+@Autonomous(name="StudioRunnerAutoBlue", group = "Autonomous")
 public class StudioRunnerAuto extends LinearOpMode {
     private StudioAprilTag studioAprilTag;
 
     // Hardware declarations
     private com.qualcomm.robotcore.hardware.DcMotorEx launcherFlywheel;
+    private com.qualcomm.robotcore.hardware.DcMotorEx leftFront, leftBack, rightBack, rightFront;
     private com.qualcomm.robotcore.hardware.DcMotor launcherElevator;
     private com.qualcomm.robotcore.hardware.DcMotor sorter;
     private com.qualcomm.robotcore.hardware.CRServo intakeServo;
+    private MecanumDrive drive;
 
     // Shared intake/sorter state copied from StudioTeleop
     private boolean sensorActive = false;
@@ -50,6 +55,21 @@ public class StudioRunnerAuto extends LinearOpMode {
         studioAprilTag = new StudioAprilTag();
         studioAprilTag.init(hardwareMap, "Webcam 1");
 
+        leftFront = hardwareMap.get(DcMotorEx.class, "leftFront");
+        leftBack = hardwareMap.get(DcMotorEx.class, "leftBack");
+        rightBack = hardwareMap.get(DcMotorEx.class, "rightBack");
+        rightFront = hardwareMap.get(DcMotorEx.class, "rightFront");
+
+        leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // TODO: reverse motor directions if needed
+        //   leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        rightFront.setDirection(DcMotorSimple.Direction.REVERSE);
+        rightBack.setDirection(DcMotorSimple.Direction.REVERSE);
+
         // Hardware initialization
         launcherFlywheel = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotorEx.class, "launcherFlywheel");
         launcherElevator = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotor.class, "launcherElevator");
@@ -68,7 +88,7 @@ public class StudioRunnerAuto extends LinearOpMode {
         telemetry.addLine("Initialized. Waiting for start...");
         telemetry.update();
 
-
+        waitForStart();
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherFlywheel.setPIDFCoefficients(
                 launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
@@ -111,9 +131,9 @@ public class StudioRunnerAuto extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(new Pose2d(0, 0, 0))
                         .setTangent(Math.toRadians(0))   // heading right (x-positive)
-                        .strafeTo(new Vector2d(0, 10))  // go left/right based on field coords
+                        .strafeTo(new Vector2d(0, 5))  // go left/right based on field coords
                         .setTangent(Math.toRadians(180)) // now we want to go backwards toward -X
-                        .lineToX(-40)                    // RR now has a valid heading
+                        .lineToX(-40) // RR now has a valid heading
                         .build()
         );
 
@@ -131,69 +151,69 @@ public class StudioRunnerAuto extends LinearOpMode {
         );
 
         Actions.runBlocking(
-                drive.actionBuilder(currentPos)
-                        .turn(Math.toRadians(105))
-                        .lineToY(57)
-                        .turn(Math.toRadians(-105))
+                drive.actionBuilder(new Pose2d(0, 0, 0))
+                        .turn(Math.toRadians(40))
+                        .lineToY(62)
+                        .turn(Math.toRadians(-40))
                         .build()
         );
 
+        defaultIntakeSequence();
 
+        tagId = detectTagID();
+        telemetry.addData("Detected Tag ID after scanning", tagId);
 
-//        tagId = detectTagID();
-//        telemetry.addData("Detected Tag ID after scanning", tagId);
-//
-//        String tagName = studioAprilTag.getTagName();
-//        if (tagName != null) {
-//            telemetry.addData("Tag Name", tagName);
-//        }
-//
-//        Position pos = studioAprilTag.getRobotPosition();
-//        YawPitchRollAngles ori = studioAprilTag.getRobotOrientation();
-//        if (pos != null && ori != null) {
-//            telemetry.addData("Robot X", "%.2f", pos.x);
-//            telemetry.addData("Robot Y", "%.2f", pos.y);
-//            telemetry.addData("Robot Z", "%.2f", pos.z);
-//            telemetry.addData("Robot Yaw", "%.2f", ori.getYaw(AngleUnit.DEGREES));
-//            telemetry.addData("Robot Pitch", "%.2f", ori.getPitch(AngleUnit.DEGREES));
-//            telemetry.addData("Robot Roll", "%.2f", ori.getRoll(AngleUnit.DEGREES));
-//        }
-//        telemetry.update();
-//
-//        Action trajectoryActionChosen;
-//        Pose2d currentPose = drive.localizer.getPose();
-//        if (tagId == 21) {
-//            trajectoryActionChosen = drive.actionBuilder(currentPose)
-//                    .splineTo(new Vector2d(71, 0), Math.toRadians(-90))
-//                    .lineToY(-48)
-//                    .waitSeconds(0.5)
-//                    .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
-//                    .build();
-//        } else if (tagId == 22) {
-//            trajectoryActionChosen = drive.actionBuilder(currentPose)
-//                    .lineToX(36)
-//                    .strafeTo(new Vector2d(36, 48))
-//                    .build();
-//        } else if (tagId == 23) {
-//            trajectoryActionChosen = drive.actionBuilder(currentPose)
-//                    .strafeTo(new Vector2d(46, 30))
-//                    .build();
-//        } else {
-//            trajectoryActionChosen = drive.actionBuilder(currentPose)
-//                    .waitSeconds(0.1)
-//                    .build();
-//        }
-//
-//        Actions.runBlocking(
-//                drive.actionBuilder(currentPose)
-//                        .lineToX(103)
-//                        .turn(Math.toRadians(-90))
-//                        .lineToY(-32)
-//                        .turn(Math.toRadians(28))
-//                        .build()
-//        );
-//        sleep(5000);
-//        Actions.runBlocking(trajectoryActionChosen);
+        String tagName = studioAprilTag.getTagName();
+        if (tagName != null) {
+            telemetry.addData("Tag Name", tagName);
+        }
+
+        Position pos = studioAprilTag.getRobotPosition();
+        YawPitchRollAngles ori = studioAprilTag.getRobotOrientation();
+        if (pos != null && ori != null) {
+            telemetry.addData("Robot X", "%.2f", pos.x);
+            telemetry.addData("Robot Y", "%.2f", pos.y);
+            telemetry.addData("Robot Z", "%.2f", pos.z);
+            telemetry.addData("Robot Yaw", "%.2f", ori.getYaw(AngleUnit.DEGREES));
+            telemetry.addData("Robot Pitch", "%.2f", ori.getPitch(AngleUnit.DEGREES));
+            telemetry.addData("Robot Roll", "%.2f", ori.getRoll(AngleUnit.DEGREES));
+        }
+        telemetry.update();
+
+        Action trajectoryActionChosen;
+        Pose2d currentPose = drive.localizer.getPose();
+        if (tagId == 21) {
+            trajectoryActionChosen = drive.actionBuilder(currentPose)
+                    .splineTo(new Vector2d(71, 0), Math.toRadians(-90))
+                    .lineToY(-48)
+                    .waitSeconds(0.5)
+                    .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
+                    .build();
+        } else if (tagId == 22) {
+            trajectoryActionChosen = drive.actionBuilder(currentPose)
+                    .lineToX(36)
+                    .strafeTo(new Vector2d(36, 48))
+                    .build();
+        } else if (tagId == 23) {
+            trajectoryActionChosen = drive.actionBuilder(currentPose)
+                    .strafeTo(new Vector2d(46, 30))
+                    .build();
+        } else {
+            trajectoryActionChosen = drive.actionBuilder(currentPose)
+                    .waitSeconds(0.1)
+                    .build();
+        }
+
+        Actions.runBlocking(
+                drive.actionBuilder(currentPose)
+                        .lineToX(103)
+                        .turn(Math.toRadians(-90))
+                        .lineToY(-32)
+                        .turn(Math.toRadians(28))
+                        .build()
+        );
+        sleep(5000);
+        Actions.runBlocking(trajectoryActionChosen);
 
         studioAprilTag.shutdown();
     }
@@ -247,63 +267,105 @@ public class StudioRunnerAuto extends LinearOpMode {
         launcherSequenceBusy = false;
     }
 
-private void defaultIntakeSequence() {
-    launcherSequenceBusy = true;
+    private void defaultIntakeSequence() {
+        // If another sequence is running, ignore
+        if (launcherSequenceBusy) return;
+        launcherSequenceBusy = true;
 
-    // Reset sorter to pos1
-    sorter.setPower(0);
-    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
-    sorter.setTargetPosition(0);
-    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
-    sorter.setPower(0.4);
-    while (sorter.isBusy() && opModeIsActive()) { idle(); }
-    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
+        // prepare
+        launcherElevator.setPower(-0.2);
+        launcherFlywheel.setPower(0);
+        sensorActive = true;
+        intakeServo.setPower(-1); // start intake
 
-    // Reset counters
-    ballCount = 0;
-    storePatternBuilder.setLength(0);
-    lastSensorColor = 0;
+        boolean initialAState = gamepad1.a; // capture current A state so a subsequent press can cancel
+        boolean canceled = false;
 
-    // Start intake and sensor tracking
-    sensorActive = true;
-    intakeServo.setPower(1);
+        // Ensure sorter starts at pos1
+//        sorter.setTargetPosition(0);
+//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//        sorter.setPower(0.3);
+//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+//        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//        moveSorterToPos3();
 
-    int lastHandled = 0;
+        // main loop: collect up to 3 balls unless interrupted
+        int lastHandledBallCount = 0;
+        ElapsedTime timer = new ElapsedTime();
+        timer.reset();
 
-    // Main loop until three balls detected
-    while (opModeIsActive() && ballCount < 3) {
-        readColorSensor();
+        while (opModeIsActive() && ballCount < 4 && !canceled) {
 
-        // If a ball was detected, rotate sorter
-        if (ballCount > lastHandled) {
-            if (ballCount == 1) {
-                moveSorterToPos2();
-                while (sorter.isBusy() && opModeIsActive()) { idle(); }
-            } else if (ballCount == 2) {
-                moveSorterToPos3();
-                while (sorter.isBusy() && opModeIsActive()) { idle(); }
+            // auto-cancel after 5 seconds
+            if (timer.seconds() >= 10.0) {
+                canceled = true;
+                break;
             }
-            lastHandled = ballCount;
+
+            // detect manual cancel (X or second A press)
+            if (gamepad1.x) {
+                canceled = true;
+                break;
+            }
+            boolean curA = gamepad1.a;
+            if (curA && !initialAState) {
+                canceled = true;
+                break;
+            }
+
+            // read sensor (will update ballCount/storePatternBuilder)
+            readColorSensor();
+
+            // if a new ball was detected, move sorter to next pos immediately
+            if (ballCount > lastHandledBallCount) {
+                if (ballCount == 1) {
+                    moveSorterToPos3();
+                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
+                } else if (ballCount == 2) {
+                    moveSorterToPos1();
+                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
+                } else if (ballCount == 3) {
+                    moveSorterToPos2();
+                } else if (ballCount >= 4) {
+                    break;
+                }
+                lastHandledBallCount += 1;
+            }
+
+            idle();
         }
 
-        idle();
+        // stop intake & sensor
+        sensorActive = false;
+        intakeServo.setPower(0);
+        launcherElevator.setPower(0);
+        launcherFlywheel.setPower(0);
+
+        // If canceled by X (manual reset), clear pattern immediately
+        if (gamepad1.x || canceled) {
+            ballCount = 0;
+            storePatternBuilder.setLength(0);
+            lastSensorColor = 0;
+        }
+
+        // ensure sorter returns to pos1 (so launcher can read balls)
+//        sorter.setTargetPosition(0);
+//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//        sorter.setPower(0.3);
+//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+//        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//        sorter.setPower(0);
+//        moveSorterToPos3();
+//        intakeServo.setPower(-1);
+//        sleep(3000);
+        intakeServo.setPower(0);
+
+        telemetry.addData("Stored Pattern", storePatternBuilder.toString());
+        telemetry.addData("Balls Loaded", ballCount);
+        telemetry.update();
+
+        launcherSequenceBusy = false;
     }
-
-    // Stop intake when full
-    sensorActive = false;
-    intakeServo.setPower(0);
-
-    // Return sorter to pos1
-    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
-    sorter.setTargetPosition(0);
-    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_TO_POSITION);
-    sorter.setPower(0.4);
-    while (sorter.isBusy() && opModeIsActive()) { idle(); }
-    sorter.setPower(0);
-    sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
-
-    launcherSequenceBusy = false;
-}
 
     private void defaultLaunchSequence() {
         launcherSequenceBusy = true;
@@ -410,6 +472,13 @@ private void defaultIntakeSequence() {
             lastSensorColor = colorId;
         }
         if (colorId == 0) lastSensorColor = 0;
+    }
+
+    private void moveSorterToPos1() {
+        double pos2Encoder = 0; // 120°
+        sorter.setTargetPosition((int) pos2Encoder);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.2);
     }
 
     private void moveSorterToPos2() {
