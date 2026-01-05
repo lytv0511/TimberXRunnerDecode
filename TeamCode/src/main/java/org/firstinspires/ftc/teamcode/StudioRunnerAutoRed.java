@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode;
+ package org.firstinspires.ftc.teamcode;
 
 import androidx.annotation.NonNull;
 
@@ -145,7 +145,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
                         .turn(Math.toRadians(-105))
-                        .lineToY(-57)
+                        .lineToY(-60)
                         .turn(Math.toRadians(105))
                         .build()
         );
@@ -158,7 +158,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 //                        .build()
 //        );
 
-        defaultIntakeSequence();
+//        defaultIntakeSequence();
 
         tagId = detectTagID();
         telemetry.addData("Detected Tag ID after scanning", tagId);
@@ -182,38 +182,38 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 
         Action trajectoryActionChosen;
         Pose2d currentPose = drive.localizer.getPose();
-        if (tagId == 21) {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .splineTo(new Vector2d(71, 0), Math.toRadians(-90))
-                    .lineToY(-48)
-                    .waitSeconds(0.5)
-                    .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
-                    .build();
-        } else if (tagId == 22) {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .lineToX(36)
-                    .strafeTo(new Vector2d(36, 48))
-                    .build();
-        } else if (tagId == 23) {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .strafeTo(new Vector2d(46, 30))
-                    .build();
-        } else {
-            trajectoryActionChosen = drive.actionBuilder(currentPose)
-                    .waitSeconds(0.1)
-                    .build();
-        }
-
-        Actions.runBlocking(
-                drive.actionBuilder(currentPose)
-                        .lineToX(103)
-                        .turn(Math.toRadians(-90))
-                        .lineToY(-32)
-                        .turn(Math.toRadians(28))
-                        .build()
-        );
+//        if (tagId == 21) {
+//            trajectoryActionChosen = drive.actionBuilder(currentPose)
+//                    .splineTo(new Vector2d(71, 0), Math.toRadians(-90))
+//                    .lineToY(-48)
+//                    .waitSeconds(0.5)
+//                    .splineTo(new Vector2d(95 + 8, -40 + 8), Math.toRadians(-62))
+//                    .build();
+//        } else if (tagId == 22) {
+//            trajectoryActionChosen = drive.actionBuilder(currentPose)
+//                    .lineToX(36)
+//                    .strafeTo(new Vector2d(36, 48))
+//                    .build();
+//        } else if (tagId == 23) {
+//            trajectoryActionChosen = drive.actionBuilder(currentPose)
+//                    .strafeTo(new Vector2d(46, 30))
+//                    .build();
+//        } else {
+//            trajectoryActionChosen = drive.actionBuilder(currentPose)
+//                    .waitSeconds(0.1)
+//                    .build();
+//        }
+//
+//        Actions.runBlocking(
+//                drive.actionBuilder(currentPose)
+//                        .lineToX(103)
+//                        .turn(Math.toRadians(-90))
+//                        .lineToY(-32)
+//                        .turn(Math.toRadians(28))
+//                        .build()
+//        );
         sleep(5000);
-        Actions.runBlocking(trajectoryActionChosen);
+//        Actions.runBlocking(trajectoryActionChosen);
 
         studioAprilTag.shutdown();
     }
@@ -371,15 +371,15 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         launcherSequenceBusy = true;
 
         // --- Configure flywheel PIDF ---
-//        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-//        launcherFlywheel.setPIDFCoefficients(
-//                launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
-//
-//        double targetVelocity = 53770; // ticks/sec, adjust as needed
-//        launcherFlywheel.setVelocity(targetVelocity);
+        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherFlywheel.setPIDFCoefficients(
+                launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
+
+        double targetVelocity = 53770; // ticks/sec, adjust as needed
+        launcherFlywheel.setVelocity(targetVelocity);
 
         // --- Ball positions ---
-        double[] augPositions = {augPos3, augPos1 - 30, augPos2};
+        double[] augPositions = {augPos3, augPos1, augPos2};
 
         for (double augPos : augPositions) {
             // Wait for flywheel to reach near target speed

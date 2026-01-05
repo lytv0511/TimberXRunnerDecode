@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.vision.VisionPortal;
@@ -296,17 +297,21 @@ public class StudioTeleop extends LinearOpMode {
         launcherSequenceBusy = true;
         final double MOVEMENT_DISTANCE = 2.5; // Distance to move in inches per D-pad press
         final double DRIVE_POWER = 0.4;
+        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        // --- Configure flywheel PIDF ---
+        // --- Configure flywheel PIDF with velocity control ---
+        final double LAUNCHER_TARGET_VELOCITY = 6000 * 537.7; // ticks/sec
+
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherFlywheel.setPIDFCoefficients(
-                launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                new PIDFCoefficients(300, 0, 0, 10)
+        );
 
-        double targetVelocity = 53770; // ticks/sec, adjust as needed
-        launcherFlywheel.setVelocity(targetVelocity);
+        launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
 
         // --- Ball positions ---
-        double[] augPositions = {augPos3, augPos1 - 30, augPos2};
+        double[] augPositions = {augPos3, augPos1, augPos2};
 
         for (double augPos : augPositions) {
             // Wait for flywheel to reach near target speed
@@ -314,7 +319,7 @@ public class StudioTeleop extends LinearOpMode {
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
-                    Math.abs(launcherFlywheel.getVelocity() - targetVelocity) > 1500 &&
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 1125 &&
                     spinTimer.seconds() < 2.0) // was 3
             { // Increased max wait for stability
 
@@ -761,6 +766,7 @@ public class StudioTeleop extends LinearOpMode {
         telemetry.addData("Trigger", triggerPower);
         telemetry.addData("Launcher1 Power", launcherFlywheel.getPower());
         telemetry.addData("Launcher2 Power", launcherElevator.getPower());
+        telemetry.addData("Launcher Velocity (ticks/s)", launcherFlywheel.getVelocity());
         telemetry.addData("Stored Pattern", storePatternBuilder.toString());
         telemetry.addData("Balls Loaded", ballCount);
         telemetry.update();
