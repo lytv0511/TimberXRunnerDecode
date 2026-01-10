@@ -154,12 +154,20 @@ public class StudioRunnerAutoBlue extends LinearOpMode {
 //                        .build()
 //        );
 
+//        Pose2d currentPos = drive.localizer.getPose();
+//        Actions.runBlocking(
+//                drive.actionBuilder(currentPos)
+//                        .turn(Math.toRadians(56.540))
+//                        .lineToY(68.922)
+//                        .turn(Math.toRadians(-56.540))
+//                        .build()
+//        );
+
         Pose2d currentPos = drive.localizer.getPose();
+
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
-                        .turn(Math.toRadians(56.540))
-                        .lineToY(68.922)
-                        .turn(Math.toRadians(-56.540))
+                        .strafeTo( new Vector2d(currentPos.position.x + 45, currentPos.position.y - 65))
                         .build()
         );
 
