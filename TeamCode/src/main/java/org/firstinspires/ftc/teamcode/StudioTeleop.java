@@ -310,6 +310,7 @@ public class StudioTeleop extends LinearOpMode {
         );
 
         launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
+        sleep(1000);
 
         // --- Ball positions ---
         double[] augPositions = {augPos3, augPos1, augPos2};

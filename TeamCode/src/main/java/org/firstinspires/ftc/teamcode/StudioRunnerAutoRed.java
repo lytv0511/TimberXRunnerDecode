@@ -48,6 +48,9 @@ public class StudioRunnerAutoRed extends LinearOpMode {
     private double ticksPerRevolution = 537.7;
     private double augPos1, augPos2, augPos3;
 
+    private boolean lastDpadUpState = false;
+    private boolean lastDpadDownState = false;
+
     double targetVelocity = 53770;
     @Override
     public void runOpMode() throws InterruptedException {
@@ -80,6 +83,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.RUN_USING_ENCODER);
         sorter.setDirection(com.qualcomm.robotcore.hardware.DcMotor.Direction.REVERSE);
+        launcherElevator.setDirection(DcMotorEx.Direction.REVERSE);
 
         augPos1 = ticksPerRevolution / 2;
         augPos2 = (ticksPerRevolution * 5) / 6;
@@ -131,9 +135,9 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(new Pose2d(0, 0, 0))
                         .setTangent(Math.toRadians(0))   // heading right (x-positive)
-                        .strafeTo(new Vector2d(0, -5))  // go left/right based on field coords
+                        .strafeTo(new Vector2d(0, -2.5))  // go left/right based on field coords
                         .setTangent(Math.toRadians(180)) // now we want to go backwards toward -X
-                        .lineToX(-45) // was -40 for blue
+                        .lineToX(-52) // was -40 for blue
                         .build()
         );
 
@@ -369,66 +373,124 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 
     private void defaultLaunchSequence() {
         launcherSequenceBusy = true;
+        boolean canceled = false;
+        final double MOVEMENT_DISTANCE = 2.5; // Distance to move in inches per D-pad press
+        final double DRIVE_POWER = 0.4;
+        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        // --- Configure flywheel PIDF ---
+        // --- Configure flywheel PIDF with velocity control ---
+        final double LAUNCHER_TARGET_VELOCITY = 1780; // ticks/sec
+
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherFlywheel.setPIDFCoefficients(
-                launcherFlywheel.getMode(), new PIDFCoefficients(10, 0, 0, 15));
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                new PIDFCoefficients(300, 0, 0, 10)
+        );
 
-        double targetVelocity = 53770; // ticks/sec, adjust as needed
-        launcherFlywheel.setVelocity(targetVelocity);
+        launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
+        sleep(1000);
 
         // --- Ball positions ---
         double[] augPositions = {augPos3, augPos1, augPos2};
 
         for (double augPos : augPositions) {
             // Wait for flywheel to reach near target speed
-            // **FIX 1: Increased max wait time (2.0s -> 3.0s)**
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
-                    Math.abs(launcherFlywheel.getVelocity() - targetVelocity) > 1500 &&
-                    spinTimer.seconds() < 1) { // Increased max wait for stability
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) >= 1680)
+            {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+
+                boolean currentDpadUp = gamepad1.dpad_up;
+                boolean currentDpadDown = gamepad1.dpad_down;
+
+                if (currentDpadUp && !lastDpadUpState) {
+                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+                            .lineToX(MOVEMENT_DISTANCE)
+                            .build());
+                    sleep(300); // Temporary placeholder to simulate blocking movement
+                } else if (currentDpadDown && !lastDpadDownState) {
+                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+                            .lineToX(-MOVEMENT_DISTANCE)
+                            .build());
+                    sleep(300); // Temporary placeholder to simulate blocking movement
+                }
+
+                lastDpadUpState = currentDpadUp;
+                lastDpadDownState = currentDpadDown;
+
                 idle();
             }
+            if (canceled) break;
 
             // Move sorter to the ball
             sorter.setTargetPosition((int) augPos);
             sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.3); // Increased sorter power slightly (0.2 -> 0.3)
+            sorter.setPower(0.3);
 
             // Wait for sorter to move
             while (sorter.isBusy() && opModeIsActive()) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
                 idle();
             }
+            if (canceled) break;
 
-            // **FIX 2: Stricter wait for sorter alignment (essential for precision)**
             // Wait until the sorter is within a small tolerance of the target position
-            // to ensure alignment is complete before feeding the ball.
             ElapsedTime alignmentTimer = new ElapsedTime();
             alignmentTimer.reset();
-            int tolerance = 10; // Adjust this tolerance (in ticks) as needed
+            int tolerance = 10;
 
             while (opModeIsActive() &&
                     Math.abs(sorter.getCurrentPosition() - (int)augPos) > tolerance &&
-                    alignmentTimer.seconds() < 0.5) { // Max wait for fine alignment
+                    alignmentTimer.seconds() < 0.5) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
                 idle();
             }
+            if (canceled) break;
 
             // Ensure motor is stopped after alignment for no drift
             sorter.setPower(0);
 
             // Feed ball using elevator
-            launcherElevator.setPower(1.0); // tuned feed power
+            launcherElevator.setPower(-1.0);
             ElapsedTime feedTimer = new ElapsedTime();
             feedTimer.reset();
 
-            // **FIX 3: Increased feed duration (0.5s -> 0.7s)**
-            // This ensures a strong, complete ejection of all three balls.
             while (feedTimer.seconds() < 0.7 && opModeIsActive()) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
                 idle();
             }
             launcherElevator.setPower(0);
+            if (canceled) break;
+        }
+
+        if (canceled) {
+            launcherFlywheel.setPower(0);
+            launcherElevator.setPower(0);
+
+            sorter.setTargetPosition(0); // pos1
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.3);
+            while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+            sorter.setPower(0);
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            launcherSequenceBusy = false;
+            return;
         }
 
         // Return sorter to position 0
