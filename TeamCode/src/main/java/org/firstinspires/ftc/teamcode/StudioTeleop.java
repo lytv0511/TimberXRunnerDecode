@@ -301,7 +301,7 @@ public class StudioTeleop extends LinearOpMode {
         sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // --- Configure flywheel PIDF with velocity control ---
-        final double LAUNCHER_TARGET_VELOCITY = 1680; // ticks/sec
+        final double LAUNCHER_TARGET_VELOCITY = 1780; // ticks/sec
 
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherFlywheel.setPIDFCoefficients(
@@ -319,8 +319,7 @@ public class StudioTeleop extends LinearOpMode {
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
-                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 1125 &&
-                    spinTimer.seconds() < 2.0)
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) >= 1680)
             {
                 if (gamepad1.x) {
                     canceled = true;
