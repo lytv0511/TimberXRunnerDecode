@@ -167,7 +167,7 @@ public class StudioRunnerAutoBlue extends LinearOpMode {
 
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
-                        .strafeTo( new Vector2d(currentPos.position.x + 45, currentPos.position.y - 65))
+                        .strafeTo(new Vector2d(currentPos.position.x - 45, currentPos.position.y + 65))
                         .build()
         );
 
