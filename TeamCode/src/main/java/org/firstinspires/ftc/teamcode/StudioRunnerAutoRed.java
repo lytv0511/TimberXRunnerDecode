@@ -157,9 +157,9 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
-                        .turn(Math.toRadians(-10))
+                        .turn(Math.toRadians(-15))
                         .strafeTo( new Vector2d(currentPos.position.x + 42, currentPos.position.y - 65))
-                        .turn(Math.toRadians(20))
+                        //.turn(Math.toRadians(-10))
                         .build()
         );
 
