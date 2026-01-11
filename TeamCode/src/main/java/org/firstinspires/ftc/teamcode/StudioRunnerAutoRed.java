@@ -138,7 +138,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
                         .strafeTo(new Vector2d(0, -2.5))
                         .setTangent(Math.toRadians(180)) // now we want to go backwards toward -X
                         .lineToX(-52) // was -40 for blue
-                        .turn(Math.toRadians(10))
+//                        .turn(Math.toRadians(10))
                         .build()
         );
 
@@ -157,8 +157,8 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
-                        .turn(Math.toRadians(-15))
-                        .strafeTo( new Vector2d(currentPos.position.x + 42, currentPos.position.y - 65))
+                        .turn(Math.toRadians(-10))
+                        .strafeTo( new Vector2d(currentPos.position.x + 38, currentPos.position.y - 59))
                         //.turn(Math.toRadians(-10))
                         .build()
         );
