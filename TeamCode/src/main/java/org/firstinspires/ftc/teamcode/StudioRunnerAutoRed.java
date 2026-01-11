@@ -156,7 +156,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
-                        .strafeTo( new Vector2d(currentPos.position.x + 44, currentPos.position.y - 70))
+                        .strafeTo( new Vector2d(currentPos.position.x + 44, currentPos.position.y - 67))
                         .build()
         );
 
@@ -282,8 +282,8 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         if (launcherSequenceBusy) return;
         launcherSequenceBusy = true;
 
-        final double INTAKE_FORWARD_DISTANCE = 4.0; // inches per nudge
-        final double INITIAL_INTAKE_FORWARD_DISTANCE = 0.0; // inches per nudge
+        final double INTAKE_FORWARD_DISTANCE = 3.0; // inches per nudge
+        final double INITIAL_INTAKE_FORWARD_DISTANCE = 0.5; // inches per nudge
         final int MAX_FORWARD_ATTEMPTS = 3;
         final double DETECTION_TIMEOUT = 3.0; // seconds
 
@@ -424,7 +424,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // --- Configure flywheel PIDF with velocity control ---
-        final double LAUNCHER_TARGET_VELOCITY = 1680; // ticks/sec
+        final double LAUNCHER_TARGET_VELOCITY = 1780; // ticks/sec
 
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherFlywheel.setPIDFCoefficients(
