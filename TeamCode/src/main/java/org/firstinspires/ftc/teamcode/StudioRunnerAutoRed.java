@@ -54,7 +54,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
     double targetVelocity = 53770;
     @Override
     public void runOpMode() throws InterruptedException {
-        MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
+        drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
         studioAprilTag = new StudioAprilTag();
         studioAprilTag.init(hardwareMap, "Webcam 1");
 
@@ -141,8 +141,6 @@ public class StudioRunnerAutoRed extends LinearOpMode {
                         .build()
         );
 
-        sleep(500);
-
         defaultLaunchSequence();
 
 //        Pose2d currentPos = drive.localizer.getPose();
@@ -158,7 +156,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
-                        .strafeTo( new Vector2d(currentPos.position.x + 45, currentPos.position.y - 65))
+                        .strafeTo( new Vector2d(currentPos.position.x + 45, currentPos.position.y - 67))
                         .build()
         );
 
@@ -170,7 +168,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 //                        .build()
 //        );
 
-//        defaultIntakeSequence();
+        defaultIntakeSequence();
 
         tagId = detectTagID();
         telemetry.addData("Detected Tag ID after scanning", tagId);
@@ -284,6 +282,10 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         if (launcherSequenceBusy) return;
         launcherSequenceBusy = true;
 
+        final double INTAKE_FORWARD_DISTANCE = 6.0; // inches per nudge
+        final int MAX_FORWARD_ATTEMPTS = 3;
+        final double DETECTION_TIMEOUT = 4.0; // seconds
+
         // prepare
         launcherElevator.setPower(-0.2);
         launcherFlywheel.setPower(0);
@@ -305,6 +307,9 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         int lastHandledBallCount = 0;
         ElapsedTime timer = new ElapsedTime();
         timer.reset();
+        int forwardAttempts = 0;
+        ElapsedTime detectionTimer = new ElapsedTime();
+        detectionTimer.reset();
 
         while (opModeIsActive() && ballCount < 4 && !canceled) {
 
@@ -328,8 +333,33 @@ public class StudioRunnerAutoRed extends LinearOpMode {
             // read sensor (will update ballCount/storePatternBuilder)
             readColorSensor();
 
+            // ---- Forward nudge logic if no ball detected ----
+            if (ballCount == lastHandledBallCount) {
+                // If we have waited too long with no new ball, move forward again
+                if (detectionTimer.seconds() >= DETECTION_TIMEOUT &&
+                        forwardAttempts < MAX_FORWARD_ATTEMPTS) {
+
+                    Actions.runBlocking(
+                            drive.actionBuilder(drive.localizer.getPose())
+                                    .lineToX(drive.localizer.getPose().position.x + INTAKE_FORWARD_DISTANCE)
+                                    .build()
+                    );
+
+                    forwardAttempts++;
+                    detectionTimer.reset();
+                }
+
+                // Stop trying after max attempts
+                if (forwardAttempts >= MAX_FORWARD_ATTEMPTS &&
+                        detectionTimer.seconds() >= DETECTION_TIMEOUT) {
+                    canceled = true;
+                }
+            }
+
             // if a new ball was detected, move sorter to next pos immediately
             if (ballCount > lastHandledBallCount) {
+                forwardAttempts = 0;
+                detectionTimer.reset();
                 if (ballCount == 1) {
                     moveSorterToPos3();
                     while (sorter.isBusy() && opModeIsActive()) { idle(); }
