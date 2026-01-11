@@ -51,10 +51,10 @@ public class StudioRunnerAutoBlue extends LinearOpMode {
     private boolean lastDpadUpState = false;
     private boolean lastDpadDownState = false;
 
-    double targetVelocity = 1780;
+    double targetVelocity = 53770;
     @Override
     public void runOpMode() throws InterruptedException {
-        MecanumDrive drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
+        drive = new MecanumDrive(hardwareMap, new Pose2d(0, 0, 0));
         studioAprilTag = new StudioAprilTag();
         studioAprilTag.init(hardwareMap, "Webcam 1");
 
@@ -135,31 +135,21 @@ public class StudioRunnerAutoBlue extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(new Pose2d(0, 0, 0))
                         .setTangent(Math.toRadians(0))   // heading right (x-positive)
-                        .strafeTo(new Vector2d(0, 2.5))  // go left/right based on field coords
+                        .strafeTo(new Vector2d(0, 2.5))
                         .setTangent(Math.toRadians(180)) // now we want to go backwards toward -X
-                        .lineToX(-50) // was -40 for blue
+                        .lineToX(-52) // was -40 for blue
+//                        .turn(Math.toRadians(-10))
                         .build()
         );
-
-        sleep(500);
 
         defaultLaunchSequence();
 
 //        Pose2d currentPos = drive.localizer.getPose();
 //        Actions.runBlocking(
 //                drive.actionBuilder(currentPos)
-//                        .turn(Math.toRadians(105))
-//                        .lineToY(60)
 //                        .turn(Math.toRadians(-105))
-//                        .build()
-//        );
-
-//        Pose2d currentPos = drive.localizer.getPose();
-//        Actions.runBlocking(
-//                drive.actionBuilder(currentPos)
-//                        .turn(Math.toRadians(56.540))
-//                        .lineToY(68.922)
-//                        .turn(Math.toRadians(-56.540))
+//                        .lineToY(-60)
+//                        .turn(Math.toRadians(105))
 //                        .build()
 //        );
 
@@ -167,7 +157,9 @@ public class StudioRunnerAutoBlue extends LinearOpMode {
 
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
-                        .strafeTo(new Vector2d(currentPos.position.x - 45, currentPos.position.y + 65))
+                        .turn(Math.toRadians(10))
+                        .strafeTo( new Vector2d(currentPos.position.x + 42, currentPos.position.y + 60))
+                        //.turn(Math.toRadians(-10))
                         .build()
         );
 
@@ -179,7 +171,7 @@ public class StudioRunnerAutoBlue extends LinearOpMode {
 //                        .build()
 //        );
 
-//        defaultIntakeSequence();
+        defaultIntakeSequence();
 
         tagId = detectTagID();
         telemetry.addData("Detected Tag ID after scanning", tagId);
@@ -288,106 +280,248 @@ public class StudioRunnerAutoBlue extends LinearOpMode {
         launcherSequenceBusy = false;
     }
 
+//    private void defaultIntakeSequence() {
+//        // If another sequence is running, ignore
+//        if (launcherSequenceBusy) return;
+//        launcherSequenceBusy = true;
+//
+//        final double INTAKE_FORWARD_DISTANCE = 3.0; // inches per nudge
+//        final double INITIAL_INTAKE_FORWARD_DISTANCE = 0.0; // inches per nudge
+//        final int MAX_FORWARD_ATTEMPTS = 4;
+//        final double DETECTION_TIMEOUT = 3.0; // seconds
+//
+//        // prepare
+//        launcherElevator.setPower(0.2);
+//        launcherFlywheel.setPower(0);
+//        sensorActive = true;
+//        intakeServo.setPower(-1); // start intake
+//
+//        boolean initialAState = gamepad1.a; // capture current A state so a subsequent press can cancel
+//        boolean canceled = false;
+//
+//        // Ensure sorter starts at pos1
+////        sorter.setTargetPosition(0);
+////        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+////        sorter.setPower(0.3);
+////        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+////        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+////        moveSorterToPos3();
+//
+//        Actions.runBlocking(
+//                drive.actionBuilder(drive.localizer.getPose())
+//                        .lineToX(drive.localizer.getPose().position.x + INITIAL_INTAKE_FORWARD_DISTANCE)
+//                        .build()
+//        );
+//
+//        // main loop: collect up to 3 balls unless interrupted
+//        int lastHandledBallCount = 0;
+//        ElapsedTime timer = new ElapsedTime();
+//        timer.reset();
+//        int forwardAttempts = 0;
+//        ElapsedTime detectionTimer = new ElapsedTime();
+//        detectionTimer.reset();
+//
+//        while (opModeIsActive() && ballCount < 4 && !canceled) {
+//
+//            // auto-cancel after 5 seconds
+//            if (timer.seconds() >= 10.0) {
+//                canceled = true;
+//                break;
+//            }
+//
+//            // detect manual cancel (X or second A press)
+//            if (gamepad1.x) {
+//                canceled = true;
+//                break;
+//            }
+//            boolean curA = gamepad1.a;
+//            if (curA && !initialAState) {
+//                canceled = true;
+//                break;
+//            }
+//
+//            // read sensor (will update ballCount/storePatternBuilder)
+//            readColorSensor();
+//
+//            // ---- Forward nudge logic if no ball detected ----
+//            if (ballCount == lastHandledBallCount) {
+//                // If we have waited too long with no new ball, move forward again
+//                if (detectionTimer.seconds() >= DETECTION_TIMEOUT &&
+//                        forwardAttempts < MAX_FORWARD_ATTEMPTS) {
+//
+//                    Actions.runBlocking(
+//                            drive.actionBuilder(drive.localizer.getPose())
+//                                    .lineToX(drive.localizer.getPose().position.x + INTAKE_FORWARD_DISTANCE)
+//                                    .build()
+//                    );
+//
+//                    forwardAttempts++;
+//                    detectionTimer.reset();
+//                }
+//
+//                // Stop trying after max attempts
+//                if (forwardAttempts >= MAX_FORWARD_ATTEMPTS &&
+//                        detectionTimer.seconds() >= DETECTION_TIMEOUT) {
+//                    canceled = true;
+//                }
+//            }
+//
+//            // if a new ball was detected, move sorter to next pos immediately
+//            if (ballCount > lastHandledBallCount) {
+//                forwardAttempts = 0;
+//                detectionTimer.reset();
+//                if (ballCount == 1) {
+//                    moveSorterToPos3();
+//                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
+//                } else if (ballCount == 2) {
+//                    moveSorterToPos1();
+//                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
+//                } else if (ballCount == 3) {
+//                    moveSorterToPos2();
+//                } else if (ballCount >= 4) {
+//                    break;
+//                }
+//                lastHandledBallCount += 1;
+//            }
+//
+//            idle();
+//        }
+//
+//        // stop intake & sensor
+//        sensorActive = false;
+//        intakeServo.setPower(0);
+//        launcherElevator.setPower(0);
+//        launcherFlywheel.setPower(0);
+//
+//        // If canceled by X (manual reset), clear pattern immediately
+//        if (gamepad1.x || canceled) {
+//            ballCount = 0;
+//            storePatternBuilder.setLength(0);
+//            lastSensorColor = 0;
+//        }
+//
+//        // ensure sorter returns to pos1 (so launcher can read balls)
+    ////        sorter.setTargetPosition(0);
+    ////        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    ////        sorter.setPower(0.3);
+    ////        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+    ////        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    ////        sorter.setPower(0);
+    ////        moveSorterToPos3();
+    ////        intakeServo.setPower(-1);
+    ////        sleep(3000);
+//        intakeServo.setPower(0);
+//
+//        telemetry.addData("Stored Pattern", storePatternBuilder.toString());
+//        telemetry.addData("Balls Loaded", ballCount);
+//        telemetry.update();
+//
+//        launcherSequenceBusy = false;
+//    }
+
+
+
+
     private void defaultIntakeSequence() {
-        // If another sequence is running, ignore
+        // 1. Prevent overlapping sequences
         if (launcherSequenceBusy) return;
         launcherSequenceBusy = true;
 
-        // prepare
-        launcherElevator.setPower(-0.2);
-        launcherFlywheel.setPower(0);
+        // --- Configuration ---
+        final double NUDGE_DISTANCE = 3.0; // Inches to move forward if no ball is seen
+        final int MAX_NUDGES_PER_BALL = 5; // Max attempts to find the next ball
+        final double DETECTION_TIMEOUT = 2.0; // Seconds to wait before deciding to nudge
+        final int TARGET_BALLS = 4;
+
+        // --- Hardware Setup ---
+        launcherElevator.setPower(0.2);
+        intakeServo.setPower(-1); // Start spinning the rubber intake
         sensorActive = true;
-        intakeServo.setPower(-1); // start intake
 
-        boolean initialAState = gamepad1.a; // capture current A state so a subsequent press can cancel
-        boolean canceled = false;
-
-        // Ensure sorter starts at pos1
-//        sorter.setTargetPosition(0);
-//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        sorter.setPower(0.3);
-//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-//        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-//        moveSorterToPos3();
-
-        // main loop: collect up to 3 balls unless interrupted
         int lastHandledBallCount = 0;
-        ElapsedTime timer = new ElapsedTime();
-        timer.reset();
+        int currentBallNudges = 0;
 
-        while (opModeIsActive() && ballCount < 4 && !canceled) {
+        ElapsedTime sequenceTimer = new ElapsedTime();
+        ElapsedTime nudgeTimer = new ElapsedTime();
+        sequenceTimer.reset();
+        nudgeTimer.reset();
 
-            // auto-cancel after 5 seconds
-            if (timer.seconds() >= 10.0) {
-                canceled = true;
+        // --- Main Intake Loop ---
+        // Condition: Loop continues until the 3rd ball has been FULLY processed/sorted
+        while (opModeIsActive() && lastHandledBallCount < TARGET_BALLS) {
+
+            // Manual cancel or safety timeout (15s)
+            if (gamepad1.x || sequenceTimer.seconds() > 15.0) {
                 break;
             }
 
-            // detect manual cancel (X or second A press)
-            if (gamepad1.x) {
-                canceled = true;
-                break;
-            }
-            boolean curA = gamepad1.a;
-            if (curA && !initialAState) {
-                canceled = true;
-                break;
-            }
-
-            // read sensor (will update ballCount/storePatternBuilder)
+            // Always update sensor state
             readColorSensor();
 
-            // if a new ball was detected, move sorter to next pos immediately
-            if (ballCount > lastHandledBallCount) {
+            // LOGIC A: We are currently searching for a ball (Sensor hasn't seen a new one yet)
+            if (ballCount == lastHandledBallCount) {
+                if (nudgeTimer.seconds() >= DETECTION_TIMEOUT) {
+                    if (currentBallNudges < MAX_NUDGES_PER_BALL) {
+                        // Drive forward slightly to reach the ball
+                        Actions.runBlocking(
+                                drive.actionBuilder(drive.localizer.getPose())
+                                        .lineToX(drive.localizer.getPose().position.x + NUDGE_DISTANCE)
+                                        .build()
+                        );
+                        currentBallNudges++;
+                        nudgeTimer.reset(); // Wait at new position for detection
+                    } else {
+                        // Stop the loop if we've nudged too many times without finding a ball
+                        break;
+                    }
+                }
+            }
+
+            // LOGIC B: A new ball was just detected by the color sensor
+            else if (ballCount > lastHandledBallCount) {
+                // New ball detected! Immediately handle sorter movement
                 if (ballCount == 1) {
                     moveSorterToPos3();
-                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
                 } else if (ballCount == 2) {
                     moveSorterToPos1();
-                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
                 } else if (ballCount == 3) {
                     moveSorterToPos2();
-                } else if (ballCount >= 4) {
-                    break;
                 }
-                lastHandledBallCount += 1;
+
+                // Wait for the sorter to finish rotating before doing anything else
+                while (sorter.isBusy() && opModeIsActive()) {
+                    idle();
+                }
+
+                // Successfully processed this ball
+                lastHandledBallCount = ballCount;
+
+                // Reset "Search" variables for the NEXT ball
+                currentBallNudges = 0;
+                nudgeTimer.reset();
             }
 
             idle();
         }
 
-        // stop intake & sensor
+        // --- Cleanup and Shutdown ---
         sensorActive = false;
         intakeServo.setPower(0);
         launcherElevator.setPower(0);
         launcherFlywheel.setPower(0);
 
-        // If canceled by X (manual reset), clear pattern immediately
-        if (gamepad1.x || canceled) {
+        // If we canceled or timed out, reset variables for next time
+        if (gamepad1.x) {
             ballCount = 0;
             storePatternBuilder.setLength(0);
-            lastSensorColor = 0;
         }
 
-        // ensure sorter returns to pos1 (so launcher can read balls)
-//        sorter.setTargetPosition(0);
-//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        sorter.setPower(0.3);
-//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-//        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-//        sorter.setPower(0);
-//        moveSorterToPos3();
-//        intakeServo.setPower(-1);
-//        sleep(3000);
-        intakeServo.setPower(0);
-
-        telemetry.addData("Stored Pattern", storePatternBuilder.toString());
-        telemetry.addData("Balls Loaded", ballCount);
+        telemetry.addData("Sequence Status", "Complete");
+        telemetry.addData("Total Balls Sorted", lastHandledBallCount);
         telemetry.update();
 
         launcherSequenceBusy = false;
     }
-
     private void defaultLaunchSequence() {
         launcherSequenceBusy = true;
         boolean canceled = false;
@@ -415,7 +549,7 @@ public class StudioRunnerAutoBlue extends LinearOpMode {
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
-                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) >= 1680)
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50) // was 1780
             {
                 if (gamepad1.x) {
                     canceled = true;
