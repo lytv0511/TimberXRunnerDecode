@@ -156,7 +156,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 
         Actions.runBlocking(
                 drive.actionBuilder(currentPos)
-                        .strafeTo( new Vector2d(currentPos.position.x + 45, currentPos.position.y - 67))
+                        .strafeTo( new Vector2d(currentPos.position.x + 44, currentPos.position.y - 70))
                         .build()
         );
 
@@ -282,9 +282,10 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         if (launcherSequenceBusy) return;
         launcherSequenceBusy = true;
 
-        final double INTAKE_FORWARD_DISTANCE = 6.0; // inches per nudge
+        final double INTAKE_FORWARD_DISTANCE = 4.0; // inches per nudge
+        final double INITIAL_INTAKE_FORWARD_DISTANCE = 0.0; // inches per nudge
         final int MAX_FORWARD_ATTEMPTS = 3;
-        final double DETECTION_TIMEOUT = 4.0; // seconds
+        final double DETECTION_TIMEOUT = 3.0; // seconds
 
         // prepare
         launcherElevator.setPower(-0.2);
@@ -302,6 +303,12 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
 //        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 //        moveSorterToPos3();
+
+        Actions.runBlocking(
+                drive.actionBuilder(drive.localizer.getPose())
+                        .lineToX(drive.localizer.getPose().position.x + INITIAL_INTAKE_FORWARD_DISTANCE)
+                        .build()
+        );
 
         // main loop: collect up to 3 balls unless interrupted
         int lastHandledBallCount = 0;
@@ -417,7 +424,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // --- Configure flywheel PIDF with velocity control ---
-        final double LAUNCHER_TARGET_VELOCITY = 1780; // ticks/sec
+        final double LAUNCHER_TARGET_VELOCITY = 1680; // ticks/sec
 
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherFlywheel.setPIDFCoefficients(
