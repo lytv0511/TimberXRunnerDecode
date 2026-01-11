@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import static android.icu.lang.UProperty.MATH;
+
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
@@ -10,6 +12,7 @@ import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.vision.VisionPortal;
@@ -24,18 +27,31 @@ public class StudioTeleop extends LinearOpMode {
 
     // === Intake/Sorter/Pattern state ===
     private boolean sensorActive = false;
+    private double flatDistance = Double.NaN;
 
     private int ballCount = 0;
     private StringBuilder storePatternBuilder = new StringBuilder();
     private int lastSensorColor = 0;  // 0 = no ball, 1 = green, 2 = purple
-
     private ColorSensor colorSensor;
     private double ticksPerRevolution = 537.7; // Assuming Neverest 20/40 motor ticks per rev
+    int mode = 1;
+    private boolean lastY = false;
+    private ElapsedTime yDebounceTimer = new ElapsedTime();
+    private static final double TOGGLE_COOLDOWN = 0.25; // seconds
+
 
     // Launcher positions (initialized in runOpMode() or can keep these as default values)
     private double augPos1 = ticksPerRevolution / 2;      // 180°
     private double augPos2 = (ticksPerRevolution * 5) / 6; // 300°
     private double augPos3 = ticksPerRevolution / 6;      // 60°
+
+    double GLOBAL_LAUNCHER_TARGET_VELOCITY = 1780; // ticks/sec
+    private static class DirectTagInfo {
+        int id;
+        double flatDistance;
+        double theta;
+        double yaw, pitch, roll;
+    }
 
     private DcMotorEx launcherFlywheel;
     // === Flywheel PID (intake mode) ===
@@ -50,6 +66,7 @@ public class StudioTeleop extends LinearOpMode {
 
     private VisionPortal visionPortal;
     private DcMotor sorter;
+    private Servo signalServo;
     private CRServo intakeServo;
     private MecanumDrive drive;
     private AprilTagProcessor aprilTag;
@@ -59,11 +76,8 @@ public class StudioTeleop extends LinearOpMode {
     private boolean lastDpadUpState = false;
     private boolean lastDpadDownState = false;
 
-    private static class DirectTagInfo {
-        int id;
-        double flatDistance;
-        double theta;
-        double yaw, pitch, roll;
+    private boolean toggleOnPress(boolean current, boolean last) {
+        return current && !last;
     }
 
     private double computePowerFromDistance(double d) {
@@ -89,6 +103,7 @@ public class StudioTeleop extends LinearOpMode {
         launcherElevator = hardwareMap.get(DcMotor.class, "launcherElevator");
         sorter = hardwareMap.get(DcMotor.class, "sorter");
         intakeServo = hardwareMap.get(CRServo.class, "intakeServo");
+        signalServo = hardwareMap.get(Servo.class, "signalServo");
 
         colorSensor = hardwareMap.get(ColorSensor.class, "colorSensor");
 
@@ -301,7 +316,7 @@ public class StudioTeleop extends LinearOpMode {
         sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // --- Configure flywheel PIDF with velocity control ---
-        final double LAUNCHER_TARGET_VELOCITY = 1780; // ticks/sec
+        final double LAUNCHER_TARGET_VELOCITY = GLOBAL_LAUNCHER_TARGET_VELOCITY; // ticks/sec
 
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherFlywheel.setPIDFCoefficients(
@@ -320,7 +335,7 @@ public class StudioTeleop extends LinearOpMode {
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
-                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) >= 1680)
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50)
             {
                 if (gamepad1.x) {
                     canceled = true;
@@ -332,8 +347,8 @@ public class StudioTeleop extends LinearOpMode {
 
                 if (currentDpadUp && !lastDpadUpState) {
                     Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
-                                    .lineToX(MOVEMENT_DISTANCE)
-                                    .build());
+                            .lineToX(MOVEMENT_DISTANCE)
+                            .build());
                     sleep(300); // Temporary placeholder to simulate blocking movement
                 } else if (currentDpadDown && !lastDpadDownState) {
                     Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
@@ -644,7 +659,7 @@ public class StudioTeleop extends LinearOpMode {
         } else {
             AprilTagDetection det = detections.get(0);
 
-            double flatDistance = Math.hypot(det.ftcPose.x, det.ftcPose.y) * 1.1;
+            flatDistance = Math.hypot(det.ftcPose.x, det.ftcPose.y) * 1.1;
             double theta = Math.toDegrees(Math.atan2(det.ftcPose.y, det.ftcPose.x));
 
             telemetry.addLine("=== Direct Camera → Tag ===");
@@ -660,9 +675,12 @@ public class StudioTeleop extends LinearOpMode {
         double launcherTrigger = 0;
 
         if (gamepad1.right_bumper) {
-            intakeServo.setPower(-1);
-        } else if (gamepad1.left_bumper) {
-            intakeServo.setPower(0);
+            launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            launcherFlywheel.setPIDFCoefficients(
+                    DcMotor.RunMode.RUN_USING_ENCODER,
+                    new PIDFCoefficients(300, 0, 0, 10)
+            );
+            launcherFlywheel.setVelocity(GLOBAL_LAUNCHER_TARGET_VELOCITY); // 1780 for 57 && 2000 for 112
         }
 
         launcherTrigger = gamepad1.right_trigger;
@@ -695,32 +713,69 @@ public class StudioTeleop extends LinearOpMode {
 
         // D-Pad Right
         if (gamepad1.dpad_right) {
-            launcherElevator.setPower(0.1);
+//            launcherElevator.setPower(0.1);
             target = gamepad1.left_bumper ? pos3 : augPos3;
-            sleep(500);
-            launcherElevator.setPower(0);
+//            sleep(500);
+//            launcherElevator.setPower(0);
         }
         // D-Pad Up
         if (gamepad1.dpad_up) {
-            launcherElevator.setPower(0.1);
+//            launcherElevator.setPower(0.1);
             target = gamepad1.left_bumper ? pos2 : augPos2;
-            sleep(500);
-            launcherElevator.setPower(0);
+//            sleep(500);
+//            launcherElevator.setPower(0);
         }
         // D-Pad Left
         if (gamepad1.dpad_left) {
-            launcherElevator.setPower(0.1);
+//            launcherElevator.setPower(0.1);
             target = gamepad1.left_bumper ? pos1 : augPos1;
-            sleep(500);
-            launcherElevator.setPower(0);
+//            sleep(500);
+//            launcherElevator.setPower(0);
         }
 
         // If any D-pad button pressed, move motor
-        if (gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) {
+        if ((gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) && !gamepad1.right_bumper) {
             sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             sorter.setTargetPosition((int) target);
             sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
             sorter.setPower(0.3);
+        }
+
+        if ((gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) && gamepad1.right_bumper) {
+            launcherElevator.setPower(-1.0);
+            sleep(1000);
+        }
+
+        if ((gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) && gamepad1.right_bumper) {
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            sorter.setTargetPosition((int) target);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(1.0);
+            while (sorter.getCurrentPosition() != (int) target || launcherFlywheel.getVelocity() < GLOBAL_LAUNCHER_TARGET_VELOCITY - 50) {
+                launcherElevator.setPower(1.0);
+            }
+            launcherElevator.setPower(-1.0);
+        }
+
+        if (mode == 1) {
+            GLOBAL_LAUNCHER_TARGET_VELOCITY = 1780;
+        } else if (mode == 2) {
+            GLOBAL_LAUNCHER_TARGET_VELOCITY = 2000;
+        }
+
+        boolean y = gamepad1.y;
+
+        if (y && !lastY && yDebounceTimer.seconds() > TOGGLE_COOLDOWN) {
+            mode = (mode == 1) ? 2 : 1;
+            yDebounceTimer.reset();
+        }
+
+        lastY = y;
+
+        if (gamepad1.left_bumper) {
+            intakeServo.setPower(-1.0);
+        } else if (!gamepad1.left_bumper) {
+            intakeServo.setPower(0.0);
         }
 
         String targetPattern = detectedPattern;
@@ -795,10 +850,32 @@ public class StudioTeleop extends LinearOpMode {
             launcherElevator.setPower(-launcherTrigger);
         }
 
-        telemetry.addData("Trigger", triggerPower);
+        int expectedDistance = 57;
+
+        if (mode == 1) {
+            expectedDistance = 57;
+        } else if (mode == 2) {
+            expectedDistance = 112;
+        }
+
+        if (!Double.isNaN(flatDistance) && Math.abs(flatDistance - (double)expectedDistance) > 1.5) {
+            signalServo.setPosition(0.5);
+        } else {
+            signalServo.setPosition(0.0);
+        }
+
+        String modeName = "howitzer";
+
+        if (mode == 1) {
+            modeName = "howitzer";
+        } else if (mode == 2) {
+            modeName = "artillery";
+        }
+
+        telemetry.addData("Mode", modeName);
+        telemetry.addData("Launcher Velocity (ticks/s)", launcherFlywheel.getVelocity());
         telemetry.addData("Launcher1 Power", launcherFlywheel.getPower());
         telemetry.addData("Launcher2 Power", launcherElevator.getPower());
-        telemetry.addData("Launcher Velocity (ticks/s)", launcherFlywheel.getVelocity());
         telemetry.addData("Stored Pattern", storePatternBuilder.toString());
         telemetry.addData("Balls Loaded", ballCount);
         telemetry.update();
