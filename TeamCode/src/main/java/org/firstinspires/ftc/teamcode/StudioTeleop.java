@@ -873,6 +873,17 @@ public class StudioTeleop extends LinearOpMode {
             sleep(1000);
         }
 
+//        if ((gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) && gamepad1.right_bumper) {
+//            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//            sorter.setTargetPosition((int) target);
+//            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//            sorter.setPower(1.0);
+//            while (sorter.getCurrentPosition() != (int) target || launcherFlywheel.getVelocity() < GLOBAL_LAUNCHER_TARGET_VELOCITY - 50) {
+//                launcherElevator.setPower(1.0);
+//            }
+//            launcherElevator.setPower(-1.0);
+//        }
+
         if ((gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) && gamepad1.right_bumper) {
             sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             sorter.setTargetPosition((int) target);
