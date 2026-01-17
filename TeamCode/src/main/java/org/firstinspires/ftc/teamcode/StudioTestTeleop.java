@@ -1,11 +1,13 @@
 package org.firstinspires.ftc.teamcode;
 
+import static android.icu.lang.UProperty.MATH;
 
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.Vector2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -20,14 +22,8 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import java.util.List;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
-@TeleOp(name="StudioConceptTeleop", group="TeleOp")
-public class StudioConceptTeleop extends LinearOpMode {
-
-    // === Sorter Servo Positions ===
-    private static final double SORTER_POS_1 = 0.00; // home
-    private static final double SORTER_POS_2 = 0.33;
-    private static final double SORTER_POS_3 = 0.66;
-    private static final double SORTER_POS_4 = 1.00;
+@TeleOp(name="StudioTestTeleop", group="TeleOp")
+public class StudioTestTeleop extends LinearOpMode {
 
     // === Intake/Sorter/Pattern state ===
     private boolean sensorActive = false;
@@ -69,9 +65,8 @@ public class StudioConceptTeleop extends LinearOpMode {
     private DcMotor launcherElevator;
 
     private VisionPortal visionPortal;
-    private Servo sorter;
+    private DcMotor sorter, intake;
     private Servo signalServo;
-    private DcMotor intake;
     private MecanumDrive drive;
     private AprilTagProcessor aprilTag;
 
@@ -105,14 +100,17 @@ public class StudioConceptTeleop extends LinearOpMode {
         // Map motors from the configuration
         launcherFlywheel = hardwareMap.get(DcMotorEx.class, "launcherFlywheel");
         launcherElevator = hardwareMap.get(DcMotor.class, "launcherElevator");
-        sorter = hardwareMap.get(Servo.class, "sorter");
-        intake = hardwareMap.get(DcMotor.class, "intake");
+        sorter = hardwareMap.get(DcMotor.class, "sorter");
+        intake = hardwareMap.get(DcMotorEx.class, "intake");
         signalServo = hardwareMap.get(Servo.class, "signalServo");
 
         colorSensor = hardwareMap.get(ColorSensor.class, "colorSensor");
 
         launcherFlywheel.setDirection(DcMotor.Direction.FORWARD);
         launcherElevator.setDirection(DcMotor.Direction.REVERSE);
+        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setDirection(DcMotor.Direction.REVERSE);
 
         drive = new MecanumDrive(hardwareMap, new com.acmerobotics.roadrunner.Pose2d(0, 0, 0));
 
@@ -146,15 +144,24 @@ public class StudioConceptTeleop extends LinearOpMode {
     private void initiateLaunchSequence(double targetAugPos1, double targetAugPos2, double targetAugPos3) {
         launcherSequenceBusy = true;
         launcherFlywheel.setPower(1.0);
-        sorter.setPosition(SORTER_POS_2);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition((int) targetAugPos1);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
         launcherElevator.setPower(1.0);
         sleep(2000);
         launcherElevator.setPower(0);
-        sorter.setPosition(SORTER_POS_3);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition((int) targetAugPos2);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
         launcherElevator.setPower(1.0);
         sleep(2000);
         launcherElevator.setPower(0);
-        sorter.setPosition(SORTER_POS_4);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition((int) targetAugPos3);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
         launcherElevator.setPower(1.0);
         sleep(2000);
         launcherElevator.setPower(0);
@@ -172,7 +179,14 @@ public class StudioConceptTeleop extends LinearOpMode {
         intake.setPower(0);
 
         // stop sorter and return to pos1
-        sorter.setPosition(SORTER_POS_1);
+        sorter.setPower(0);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        sorter.setTargetPosition(0);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sorter.setPower(0);
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         // clear pattern and counters
         ballCount = 0;
@@ -241,8 +255,10 @@ public class StudioConceptTeleop extends LinearOpMode {
             if (ballCount > lastHandledBallCount) {
                 if (ballCount == 1) {
                     moveSorterToPos3();
+                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
                 } else if (ballCount == 2) {
                     moveSorterToPos1();
+                    while (sorter.isBusy() && opModeIsActive()) { idle(); }
                 } else if (ballCount == 3) {
                     moveSorterToPos2();
                 } else if (ballCount >= 4) {
@@ -268,7 +284,15 @@ public class StudioConceptTeleop extends LinearOpMode {
         }
 
         // ensure sorter returns to pos1 (so launcher can read balls)
-        sorter.setPosition(SORTER_POS_1);
+//        sorter.setTargetPosition(0);
+//        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//        sorter.setPower(0.3);
+//        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+//        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//        sorter.setPower(0);
+//        moveSorterToPos3();
+//        intakeServo.setPower(-1);
+//        sleep(3000);
         intake.setPower(0);
 
         telemetry.addData("Stored Pattern", storePatternBuilder.toString());
@@ -283,6 +307,147 @@ public class StudioConceptTeleop extends LinearOpMode {
      * Uses PIDF velocity control for flywheel and launches each ball only when at target speed.
      * No sleeps, uses velocity checks for consistent launching.
      */
+    private void defaultLaunchSequence() {
+        launcherSequenceBusy = true;
+        boolean canceled = false;
+        final double MOVEMENT_DISTANCE = 2.5; // Distance to move in inches per D-pad press
+        final double DRIVE_POWER = 0.4;
+        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // --- Configure flywheel PIDF with velocity control ---
+        final double LAUNCHER_TARGET_VELOCITY = GLOBAL_LAUNCHER_TARGET_VELOCITY; // ticks/sec
+
+        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherFlywheel.setPIDFCoefficients(
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                new PIDFCoefficients(300, 0, 0, 10)
+        );
+
+        launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
+        sleep(1000);
+
+        // --- Ball positions ---
+        double[] augPositions = {augPos3, augPos1, augPos2};
+
+        for (double augPos : augPositions) {
+            // Wait for flywheel to reach near target speed
+            ElapsedTime spinTimer = new ElapsedTime();
+            spinTimer.reset();
+            while (opModeIsActive() &&
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50)
+            {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+
+                boolean currentDpadUp = gamepad1.dpad_up;
+                boolean currentDpadDown = gamepad1.dpad_down;
+
+                if (currentDpadUp && !lastDpadUpState) {
+                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+                            .lineToX(MOVEMENT_DISTANCE)
+                            .build());
+                    sleep(300); // Temporary placeholder to simulate blocking movement
+                } else if (currentDpadDown && !lastDpadDownState) {
+                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+                            .lineToX(-MOVEMENT_DISTANCE)
+                            .build());
+                    sleep(300); // Temporary placeholder to simulate blocking movement
+                }
+
+                lastDpadUpState = currentDpadUp;
+                lastDpadDownState = currentDpadDown;
+
+                idle();
+            }
+            if (canceled) break;
+
+            // Move sorter to the ball
+            sorter.setTargetPosition((int) augPos);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.3);
+
+            // Wait for sorter to move
+            while (sorter.isBusy() && opModeIsActive()) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+                idle();
+            }
+            if (canceled) break;
+
+            // Wait until the sorter is within a small tolerance of the target position
+            ElapsedTime alignmentTimer = new ElapsedTime();
+            alignmentTimer.reset();
+            int tolerance = 10;
+
+            while (opModeIsActive() &&
+                    Math.abs(sorter.getCurrentPosition() - (int)augPos) > tolerance &&
+                    alignmentTimer.seconds() < 0.5) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+                idle();
+            }
+            if (canceled) break;
+
+            // Ensure motor is stopped after alignment for no drift
+            sorter.setPower(0);
+
+            // Feed ball using elevator
+            launcherElevator.setPower(-1.0);
+            ElapsedTime feedTimer = new ElapsedTime();
+            feedTimer.reset();
+
+            while (feedTimer.seconds() < 0.7 && opModeIsActive()) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+                idle();
+            }
+            launcherElevator.setPower(0);
+            if (canceled) break;
+        }
+
+        if (canceled) {
+            launcherFlywheel.setPower(0);
+            launcherElevator.setPower(0);
+
+            sorter.setTargetPosition(0); // pos1
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.3);
+            while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+            sorter.setPower(0);
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            launcherSequenceBusy = false;
+            return;
+        }
+
+        // Return sorter to position 0
+        sorter.setTargetPosition(0);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+        // Stop all motors safely
+        launcherFlywheel.setPower(0);
+        launcherElevator.setPower(0);
+        sorter.setPower(0);
+
+        launcherSequenceBusy = false;
+
+        // Reset intake counters
+        storePatternBuilder.setLength(0);
+        ballCount = 0;
+        lastSensorColor = 0;
+    }
+
 //    private void defaultLaunchSequence() {
 //        launcherSequenceBusy = true;
 //        boolean canceled = false;
@@ -291,16 +456,16 @@ public class StudioConceptTeleop extends LinearOpMode {
 //        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 //
 //        // --- Configure flywheel PIDF with velocity control ---
-//        final double LAUNCHER_TARGET_VELOCITY = GLOBAL_LAUNCHER_TARGET_VELOCITY; // ticks/sec
+//        final double LAUNCHER_TARGET_VELOCITY = 2400; // ticks/sec (faster spin-up)
 //
 //        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 //        launcherFlywheel.setPIDFCoefficients(
 //                DcMotor.RunMode.RUN_USING_ENCODER,
-//                new PIDFCoefficients(300, 0, 0, 10)
+//                new PIDFCoefficients(450, 0, 0, 15)
 //        );
 //
 //        launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
-//        sleep(1000);
+//        sleep(300);
 //
 //        // --- Ball positions ---
 //        double[] augPositions = {augPos3, augPos1, augPos2};
@@ -310,7 +475,7 @@ public class StudioConceptTeleop extends LinearOpMode {
 //            ElapsedTime spinTimer = new ElapsedTime();
 //            spinTimer.reset();
 //            while (opModeIsActive() &&
-//                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50)
+//                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 150)
 //            {
 //                if (gamepad1.x) {
 //                    canceled = true;
@@ -342,7 +507,7 @@ public class StudioConceptTeleop extends LinearOpMode {
 //            // Move sorter to the ball
 //            sorter.setTargetPosition((int) augPos);
 //            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//            sorter.setPower(0.3);
+//            sorter.setPower(0.8);
 //
 //            // Wait for sorter to move
 //            while (sorter.isBusy() && opModeIsActive()) {
@@ -354,31 +519,17 @@ public class StudioConceptTeleop extends LinearOpMode {
 //            }
 //            if (canceled) break;
 //
-//            // Wait until the sorter is within a small tolerance of the target position
-//            ElapsedTime alignmentTimer = new ElapsedTime();
-//            alignmentTimer.reset();
-//            int tolerance = 10;
-//
-//            while (opModeIsActive() &&
-//                    Math.abs(sorter.getCurrentPosition() - (int)augPos) > tolerance &&
-//                    alignmentTimer.seconds() < 0.5) {
-//                if (gamepad1.x) {
-//                    canceled = true;
-//                    break;
-//                }
-//                idle();
-//            }
-//            if (canceled) break;
+//            // No fine alignment wait — fire immediately once RUN_TO_POSITION completes
 //
 //            // Ensure motor is stopped after alignment for no drift
 //            sorter.setPower(0);
 //
 //            // Feed ball using elevator
-//            launcherElevator.setPower(-1.0);
+//            launcherElevator.setPower(-1.0); // full power, short burst
 //            ElapsedTime feedTimer = new ElapsedTime();
 //            feedTimer.reset();
 //
-//            while (feedTimer.seconds() < 0.7 && opModeIsActive()) {
+//            while (feedTimer.seconds() < 0.35 && opModeIsActive()) {
 //                if (gamepad1.x) {
 //                    canceled = true;
 //                    break;
@@ -395,7 +546,7 @@ public class StudioConceptTeleop extends LinearOpMode {
 //
 //            sorter.setTargetPosition(0); // pos1
 //            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//            sorter.setPower(0.3);
+//            sorter.setPower(0.8);
 //            while (sorter.isBusy() && opModeIsActive()) { idle(); }
 //
 //            sorter.setPower(0);
@@ -408,7 +559,7 @@ public class StudioConceptTeleop extends LinearOpMode {
 //        // Return sorter to position 0
 //        sorter.setTargetPosition(0);
 //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        sorter.setPower(0.3);
+//        sorter.setPower(0.8);
 //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
 //
 //        // Stop all motors safely
@@ -423,105 +574,6 @@ public class StudioConceptTeleop extends LinearOpMode {
 //        ballCount = 0;
 //        lastSensorColor = 0;
 //    }
-
-    private void defaultLaunchSequence() {
-        launcherSequenceBusy = true;
-        boolean canceled = false;
-        final double MOVEMENT_DISTANCE = 2.5; // Distance to move in inches per D-pad press
-        final double DRIVE_POWER = 0.4;
-
-        // --- Configure flywheel PIDF with velocity control ---
-        final double LAUNCHER_TARGET_VELOCITY = 2400; // ticks/sec (faster spin-up)
-
-        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        launcherFlywheel.setPIDFCoefficients(
-                DcMotor.RunMode.RUN_USING_ENCODER,
-                new PIDFCoefficients(450, 0, 0, 15)
-        );
-
-        launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
-        sleep(300);
-
-        // --- Ball positions ---
-        double[] servoPositions = {SORTER_POS_3, SORTER_POS_1, SORTER_POS_2};
-
-        for (double pos : servoPositions) {
-            // Wait for flywheel to reach near target speed
-            ElapsedTime spinTimer = new ElapsedTime();
-            spinTimer.reset();
-            while (opModeIsActive() &&
-                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 150)
-            {
-                if (gamepad1.x) {
-                    canceled = true;
-                    break;
-                }
-
-                boolean currentDpadUp = gamepad1.dpad_up;
-                boolean currentDpadDown = gamepad1.dpad_down;
-
-                if (currentDpadUp && !lastDpadUpState) {
-                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
-                            .lineToX(MOVEMENT_DISTANCE)
-                            .build());
-                    sleep(300); // Temporary placeholder to simulate blocking movement
-                } else if (currentDpadDown && !lastDpadDownState) {
-                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
-                            .lineToX(-MOVEMENT_DISTANCE)
-                            .build());
-                    sleep(300); // Temporary placeholder to simulate blocking movement
-                }
-
-                lastDpadUpState = currentDpadUp;
-                lastDpadDownState = currentDpadDown;
-
-                idle();
-            }
-            if (canceled) break;
-
-            // Move sorter to the ball
-            sorter.setPosition(pos);
-
-            // No blocking wait for servo
-
-            // Feed ball using elevator
-            launcherElevator.setPower(-1.0); // full power, short burst
-            ElapsedTime feedTimer = new ElapsedTime();
-            feedTimer.reset();
-
-            while (feedTimer.seconds() < 0.35 && opModeIsActive()) {
-                if (gamepad1.x) {
-                    canceled = true;
-                    break;
-                }
-                idle();
-            }
-            launcherElevator.setPower(0);
-            if (canceled) break;
-        }
-
-        if (canceled) {
-            launcherFlywheel.setPower(0);
-            launcherElevator.setPower(0);
-            sorter.setPosition(SORTER_POS_1);
-            launcherSequenceBusy = false;
-            return;
-        }
-
-        // Return sorter to position 0
-        sorter.setPosition(SORTER_POS_1);
-
-        // Stop all motors safely
-        launcherFlywheel.setPower(0);
-        launcherElevator.setPower(0);
-
-        launcherSequenceBusy = false;
-
-        // Reset intake counters
-        storePatternBuilder.setLength(0);
-        ballCount = 0;
-        lastSensorColor = 0;
-    }
 
     // === Intake/Sorter/Pattern helper methods ===
     private void readColorSensor() {
@@ -558,15 +610,24 @@ public class StudioConceptTeleop extends LinearOpMode {
     }
 
     private void moveSorterToPos1() {
-        sorter.setPosition(SORTER_POS_1);
+        double pos2Encoder = 0; // 120°
+        sorter.setTargetPosition((int) pos2Encoder);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.2);
     }
 
     private void moveSorterToPos2() {
-        sorter.setPosition(SORTER_POS_2);
+        double pos2Encoder = ticksPerRevolution / 3; // 120°
+        sorter.setTargetPosition((int) pos2Encoder);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.2);
     }
 
     private void moveSorterToPos3() {
-        sorter.setPosition(SORTER_POS_3);
+        double pos3Encoder = (ticksPerRevolution * 2) / 3; // 240°
+        sorter.setTargetPosition((int) pos3Encoder);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.2);
     }
 
     private void performLaunchSequence(String storePattern, String targetPattern) {
@@ -630,14 +691,22 @@ public class StudioConceptTeleop extends LinearOpMode {
         }
 
         // reset sorter to pos1
-        sorter.setPosition(SORTER_POS_1);
+        sorter.setTargetPosition(0);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         sensorActive = true; // ready for next intake
     }
 
     public void artifactPipline() {
         // Step 1: reset sorter to pos1
-        sorter.setPosition(SORTER_POS_1);
+        sorter.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        sorter.setTargetPosition(0);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
 
         // Step 1b: clear sequence
         storePatternBuilder.setLength(0);
@@ -670,7 +739,11 @@ public class StudioConceptTeleop extends LinearOpMode {
         // Step 6: reset for next intake
         ballCount = 0;
         storePatternBuilder.setLength(0);
-        sorter.setPosition(SORTER_POS_1);  // return to pos1
+        sorter.setTargetPosition(0);  // return to pos1
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.5);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+        sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
     private void updatePatternTag() {
@@ -752,10 +825,74 @@ public class StudioConceptTeleop extends LinearOpMode {
             defaultLaunchSequence();
         }
 
-        // Manual D-pad control for sorter servo
-        if (gamepad1.dpad_right) sorter.setPosition(SORTER_POS_3);
-        if (gamepad1.dpad_up)    sorter.setPosition(SORTER_POS_4);
-        if (gamepad1.dpad_left)  sorter.setPosition(SORTER_POS_2);
+        double ticksPerRevolution = 537.7;
+
+        // Calculate positions
+        double augPos3 = ticksPerRevolution / 6; // 60°
+        double pos2 = ticksPerRevolution / 3; // 120°
+        double augPos1 = ticksPerRevolution / 2; // 180°
+        double pos3 = (ticksPerRevolution * 2) / 3; // 240°
+        double augPos2 = (ticksPerRevolution * 5) / 6; // 300°
+        double pos1 = 0; // 360°
+
+        double target = 0;
+
+        // D-Pad Right
+        if (gamepad1.dpad_right) {
+//            launcherElevator.setPower(0.1);
+            target = gamepad1.left_bumper ? pos3 : augPos3;
+//            sleep(500);
+//            launcherElevator.setPower(0);
+        }
+        // D-Pad Up
+        if (gamepad1.dpad_up) {
+//            launcherElevator.setPower(0.1);
+            target = gamepad1.left_bumper ? pos2 : augPos2;
+//            sleep(500);
+//            launcherElevator.setPower(0);
+        }
+        // D-Pad Left
+        if (gamepad1.dpad_left) {
+//            launcherElevator.setPower(0.1);
+            target = gamepad1.left_bumper ? pos1 : augPos1;
+//            sleep(500);
+//            launcherElevator.setPower(0);
+        }
+
+        // If any D-pad button pressed, move motor
+        if ((gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) && !gamepad1.right_bumper) {
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            sorter.setTargetPosition((int) target);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.3);
+        }
+
+        if ((gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) && gamepad1.right_bumper) {
+            launcherElevator.setPower(-1.0);
+            sleep(1000);
+        }
+
+        if ((gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) && gamepad1.right_bumper) {
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            sorter.setTargetPosition((int) target);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(1.0);
+            while (sorter.getCurrentPosition() != (int) target || launcherFlywheel.getVelocity() < GLOBAL_LAUNCHER_TARGET_VELOCITY - 50) {
+                launcherElevator.setPower(1.0);
+            }
+            launcherElevator.setPower(-1.0);
+        }
+
+//        if ((gamepad1.dpad_right || gamepad1.dpad_up || gamepad1.dpad_left) && gamepad1.right_bumper) {
+//            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+//            sorter.setTargetPosition((int) target);
+//            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+//            sorter.setPower(1.0);
+//            while (sorter.getCurrentPosition() != (int) target || launcherFlywheel.getVelocity() < GLOBAL_LAUNCHER_TARGET_VELOCITY - 50) {
+//                launcherElevator.setPower(1.0);
+//            }
+//            launcherElevator.setPower(-1.0);
+//        }
 
         if (mode == 1) {
             GLOBAL_LAUNCHER_TARGET_VELOCITY = 1780;
@@ -774,7 +911,7 @@ public class StudioConceptTeleop extends LinearOpMode {
 
         if (gamepad1.left_bumper) {
             intake.setPower(-1.0);
-        } else {
+        } else if (!gamepad1.left_bumper) {
             intake.setPower(0.0);
         }
 
@@ -827,9 +964,16 @@ public class StudioConceptTeleop extends LinearOpMode {
             }
         }
 
-        telemetry.addData("Sorter Servo Pos", sorter.getPosition());
+        telemetry.addData("Sorter Position", sorter.getCurrentPosition());
+        telemetry.addData("Sorter Target", sorter.getTargetPosition());
+        telemetry.addData("Sorter Busy", sorter.isBusy());
 
-        // (servo: no idle-stop logic needed)
+        if (!launcherSequenceBusy &&
+                sorter.getMode() == DcMotor.RunMode.RUN_TO_POSITION &&
+                !sorter.isBusy()) {
+            sorter.setPower(0);
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        }
 
         // Launcher flywheel: only allow manual control when not running launch sequence
         if (!launcherSequenceBusy) {
