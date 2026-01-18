@@ -45,7 +45,7 @@ public class StudioTestTeleop extends LinearOpMode {
     private double augPos2 = (ticksPerRevolution * 5) / 6; // 300°
     private double augPos3 = ticksPerRevolution / 6;      // 60°
 
-    double GLOBAL_LAUNCHER_TARGET_VELOCITY = 1780; // ticks/sec
+    double GLOBAL_LAUNCHER_TARGET_VELOCITY = 1480; // ticks/sec
     private static class DirectTagInfo {
         int id;
         double flatDistance;
@@ -761,6 +761,47 @@ public class StudioTestTeleop extends LinearOpMode {
         }
     }
 
+    /**
+     * Rotate robot in place until the camera-to-AprilTag horizontal angle is 90° ± tolerance.
+     * Only runs if a tag is detected and flatDistance is valid.
+     */
+    private void alignHeadingToTag90(double toleranceDeg, double maxTurnPower) {
+        List<AprilTagDetection> detections = aprilTag.getDetections();
+        if (detections == null || detections.isEmpty()) return;
+        if (Double.isNaN(flatDistance)) return;
+
+        AprilTagDetection det = detections.get(0);
+
+        // Camera-relative horizontal angle (degrees)
+        double theta = Math.toDegrees(Math.atan2(det.ftcPose.y, det.ftcPose.x));
+
+        // Error to desired 90°
+        double error = 90.0 - theta;
+
+        // Stop if within tolerance
+        if (Math.abs(error) <= toleranceDeg) {
+            drive.setDrivePowers(
+                    new com.acmerobotics.roadrunner.PoseVelocity2d(
+                            new com.acmerobotics.roadrunner.Vector2d(0, 0),
+                            0
+                    )
+            );
+            return;
+        }
+
+        // Simple proportional turn (clipped)
+        double kP = 0.01; // tune if needed
+        double turn = Math.max(-maxTurnPower,
+                      Math.min(maxTurnPower, error * kP));
+
+        drive.setDrivePowers(
+                new com.acmerobotics.roadrunner.PoseVelocity2d(
+                        new com.acmerobotics.roadrunner.Vector2d(0, 0),
+                        turn
+                )
+        );
+    }
+
     private void loopLogic() {
         updatePatternTag();
         telemetry.addData("Game Pattern", detectedPattern);
@@ -794,6 +835,14 @@ public class StudioTestTeleop extends LinearOpMode {
             telemetry.addData("Tag Yaw", "%.2f°", det.ftcPose.yaw);
             telemetry.addData("Tag Pitch", "%.2f°", det.ftcPose.pitch);
             telemetry.addData("Tag Roll", "%.2f°", det.ftcPose.roll);
+        }
+
+        // --- Auto-align heading to AprilTag at 90° ---
+        if (gamepad1.left_stick_button) {
+            alignHeadingToTag90(
+                    5.0,   // ±5° tolerance
+                    0.4    // max turn power
+            );
         }
 
         // Right trigger on gamepad1 goes from 0.0 to 1.0
@@ -895,9 +944,9 @@ public class StudioTestTeleop extends LinearOpMode {
 //        }
 
         if (mode == 1) {
-            GLOBAL_LAUNCHER_TARGET_VELOCITY = 1780;
+            GLOBAL_LAUNCHER_TARGET_VELOCITY = 1680;
         } else if (mode == 2) {
-            GLOBAL_LAUNCHER_TARGET_VELOCITY = 2000;
+            GLOBAL_LAUNCHER_TARGET_VELOCITY = 2200;
         }
 
         boolean y = gamepad1.y;
@@ -987,18 +1036,28 @@ public class StudioTestTeleop extends LinearOpMode {
             launcherElevator.setPower(-launcherTrigger);
         }
 
-        int expectedDistance = 57;
+        int expectedDistance = 51;
 
         if (mode == 1) {
-            expectedDistance = 57;
+            expectedDistance = 51;
         } else if (mode == 2) {
             expectedDistance = 112;
         }
 
-        if (!Double.isNaN(flatDistance) && Math.abs(flatDistance - (double)expectedDistance) > 1.5) {
-            signalServo.setPosition(0.5);
+        if (!Double.isNaN(flatDistance) && Math.abs(flatDistance - (double)expectedDistance) > 3.0) {
+            if (mode == 2) {
+                signalServo.setPosition(0.75);
+            } else {
+                signalServo.setPosition(0.5);
+            }
+
         } else {
-            signalServo.setPosition(0.0);
+            if (mode == 2) {
+                signalServo.setPosition(0.0);
+            } else {
+                signalServo.setPosition(0.25);
+            }
+
         }
 
         String modeName = "howitzer";
