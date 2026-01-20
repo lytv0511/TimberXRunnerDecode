@@ -790,14 +790,48 @@ public class StudioTestTeleop extends LinearOpMode {
         }
 
         // Simple proportional turn (clipped)
-        double kP = 0.01; // tune if needed
+        double kP = 0.2; // tune if needed
         double turn = Math.max(-maxTurnPower,
-                      Math.min(maxTurnPower, error * kP));
+                Math.min(maxTurnPower, error * kP));
 
         drive.setDrivePowers(
                 new com.acmerobotics.roadrunner.PoseVelocity2d(
                         new com.acmerobotics.roadrunner.Vector2d(0, 0),
-                        turn
+                        -turn
+                )
+        );
+    }
+
+    /**
+     * Drive robot forward/backward until flatDistance matches expectedDistance (± tolerance).
+     * Uses AprilTag camera-relative distance only.
+     */
+    private void alignDistance(double expectedDistance, double toleranceIn, double kP, double maxDrivePower) {
+        if (Double.isNaN(flatDistance)) return;
+
+        double error = expectedDistance - flatDistance;
+
+        // Stop if within tolerance
+        if (Math.abs(error) <= toleranceIn) {
+            drive.setDrivePowers(
+                    new com.acmerobotics.roadrunner.PoseVelocity2d(
+                            new com.acmerobotics.roadrunner.Vector2d(0, 0),
+                            0
+                    )
+            );
+            return;
+        }
+
+        // Proportional forward/backward control (clipped)
+        double drivePower = -(Math.max(
+                -maxDrivePower,
+                Math.min(maxDrivePower, error * kP))
+        );
+
+        drive.setDrivePowers(
+                new com.acmerobotics.roadrunner.PoseVelocity2d(
+                        new com.acmerobotics.roadrunner.Vector2d(drivePower, 0),
+                        0
                 )
         );
     }
@@ -838,10 +872,22 @@ public class StudioTestTeleop extends LinearOpMode {
         }
 
         // --- Auto-align heading to AprilTag at 90° ---
-        if (gamepad1.left_stick_button) {
+        if (gamepad1.right_stick_button) {
             alignHeadingToTag90(
-                    5.0,   // ±5° tolerance
-                    0.4    // max turn power
+                    1.0,  // ±5° tolerance
+                    0.4   // max turn power
+            );
+        }
+
+        // --- Auto-align distance to AprilTag ---
+        int expectedDistance = (mode == 2) ? 112 : 51;
+
+        if (gamepad1.left_stick_button) {
+            alignDistance(
+                    expectedDistance, // target distance (inches)
+                    1.0,              // ±1 inch tolerance
+                    0.2,              // kP
+                    0.5               // max drive power
             );
         }
 
@@ -1036,13 +1082,6 @@ public class StudioTestTeleop extends LinearOpMode {
             launcherElevator.setPower(-launcherTrigger);
         }
 
-        int expectedDistance = 51;
-
-        if (mode == 1) {
-            expectedDistance = 51;
-        } else if (mode == 2) {
-            expectedDistance = 112;
-        }
 
         if (!Double.isNaN(flatDistance) && Math.abs(flatDistance - (double)expectedDistance) > 3.0) {
             if (mode == 2) {
