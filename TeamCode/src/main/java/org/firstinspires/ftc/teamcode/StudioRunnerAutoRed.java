@@ -33,7 +33,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
     private com.qualcomm.robotcore.hardware.DcMotorEx leftFront, leftBack, rightBack, rightFront;
     private com.qualcomm.robotcore.hardware.DcMotor launcherElevator;
     private com.qualcomm.robotcore.hardware.DcMotor sorter;
-    private com.qualcomm.robotcore.hardware.CRServo intakeServo;
+    private com.qualcomm.robotcore.hardware.DcMotor intake;
     private MecanumDrive drive;
 
     // Shared intake/sorter state copied from StudioTeleop
@@ -77,7 +77,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
         launcherFlywheel = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotorEx.class, "launcherFlywheel");
         launcherElevator = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotor.class, "launcherElevator");
         sorter = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotor.class, "sorter");
-        intakeServo = hardwareMap.get(com.qualcomm.robotcore.hardware.CRServo.class, "intakeServo");
+        intake = hardwareMap.get(com.qualcomm.robotcore.hardware.DcMotor.class, "intake");
         colorSensor = hardwareMap.get(com.qualcomm.robotcore.hardware.ColorSensor.class, "colorSensor");
 
         sorter.setMode(com.qualcomm.robotcore.hardware.DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -435,7 +435,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 
         // --- Hardware Setup ---
         launcherElevator.setPower(0.2);
-        intakeServo.setPower(-1); // Start spinning the rubber intake
+        intake.setPower(-1); // Start spinning the rubber intake
         sensorActive = true;
 
         int lastHandledBallCount = 0;
@@ -506,7 +506,7 @@ public class StudioRunnerAutoRed extends LinearOpMode {
 
         // --- Cleanup and Shutdown ---
         sensorActive = false;
-        intakeServo.setPower(0);
+        intake.setPower(0);
         launcherElevator.setPower(0);
         launcherFlywheel.setPower(0);
 

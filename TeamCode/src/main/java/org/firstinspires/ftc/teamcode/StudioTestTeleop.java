@@ -45,7 +45,7 @@ public class StudioTestTeleop extends LinearOpMode {
     private double augPos2 = (ticksPerRevolution * 5) / 6; // 300°
     private double augPos3 = ticksPerRevolution / 6;      // 60°
 
-    double GLOBAL_LAUNCHER_TARGET_VELOCITY = 1480; // ticks/sec
+    double GLOBAL_LAUNCHER_TARGET_VELOCITY = 1680; // ticks/sec
     private static class DirectTagInfo {
         int id;
         double flatDistance;
@@ -905,7 +905,6 @@ public class StudioTestTeleop extends LinearOpMode {
         }
 
         launcherTrigger = gamepad1.right_trigger;
-        triggerPower = gamepad1.left_trigger;
 
         if (gamepad1.a) {
             defaultIntakeSequence();
@@ -1074,6 +1073,8 @@ public class StudioTestTeleop extends LinearOpMode {
         if (!launcherSequenceBusy) {
             launcherFlywheel.setPower(triggerPower);
         }
+
+        launcherFlywheel.setVelocity(GLOBAL_LAUNCHER_TARGET_VELOCITY);
 
         // Launcher elevator: manual control is always allowed
         if (gamepad1.right_bumper) {
