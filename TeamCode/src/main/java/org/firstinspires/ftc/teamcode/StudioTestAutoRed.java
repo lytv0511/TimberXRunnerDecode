@@ -70,13 +70,19 @@ public class StudioTestAutoRed extends LinearOpMode {
                         .build()
         );
 
+        Actions.runBlocking(
+                drive.actionBuilder(drive.localizer.getPose())
+                        .turn(Math.toRadians(10))
+                        .build()
+        );
+
         // --- Launch sequence before turning ---
         defaultLaunchSequence();
 
         // --- Turn clockwise 60 degrees ---
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
-                        .turn(Math.toRadians(-75))
+                        .turn(Math.toRadians(-85))
                         .build()
         );
 
@@ -84,8 +90,8 @@ public class StudioTestAutoRed extends LinearOpMode {
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
                         .strafeTo(new Vector2d(
-                                drive.localizer.getPose().position.x,
-                                drive.localizer.getPose().position.y + 5
+                                drive.localizer.getPose().position.x - 10,
+                                drive.localizer.getPose().position.y
                         ))
                         .build()
         );
@@ -93,7 +99,7 @@ public class StudioTestAutoRed extends LinearOpMode {
         // --- Drive forward 10 inches ---
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
-                        .lineToX(drive.localizer.getPose().position.x + 10)
+                        .lineToX(drive.localizer.getPose().position.x + 7.25)
                         .build()
         );
 
@@ -120,7 +126,7 @@ public class StudioTestAutoRed extends LinearOpMode {
         if (launcherSequenceBusy) return;
         launcherSequenceBusy = true;
 
-        final double NUDGE_DISTANCE = 3.0;
+        final double NUDGE_DISTANCE = 1.5;
         final int MAX_NUDGES = 5;
         final double DETECTION_TIMEOUT = 2.0;
 
@@ -162,7 +168,7 @@ public class StudioTestAutoRed extends LinearOpMode {
         sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // --- Configure flywheel PIDF with velocity control ---
-        final double LAUNCHER_TARGET_VELOCITY = 1780; // ticks/sec
+        final double LAUNCHER_TARGET_VELOCITY = 1680; // ticks/sec
 
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherFlywheel.setPIDFCoefficients(
@@ -181,7 +187,7 @@ public class StudioTestAutoRed extends LinearOpMode {
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
-                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50) // was 1780
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50) // was 1780 now 1680
             {
                 if (gamepad1.x) {
                     canceled = true;
