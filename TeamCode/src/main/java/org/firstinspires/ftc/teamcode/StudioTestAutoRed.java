@@ -67,6 +67,13 @@ public class StudioTestAutoRed extends LinearOpMode {
         waitForStart();
         if (isStopRequested()) return;
 
+        launcherFlywheel.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        launcherFlywheel.setPIDFCoefficients(
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                new PIDFCoefficients(300, 0, 0, 10)
+        );
+        launcherFlywheel.setVelocity(1680);
+
         // --- Drive backward first ---
         Actions.runBlocking(
                 drive.actionBuilder(new Pose2d(0, 0, 0))
@@ -80,17 +87,14 @@ public class StudioTestAutoRed extends LinearOpMode {
                         .build()
         );
 
-        // --- Launch sequence before turning ---
         defaultLaunchSequence();
 
-        // --- Turn clockwise 60 degrees ---
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
                         .turn(Math.toRadians(-85))
                         .build()
         );
 
-        // --- Strafe right 5 inches ---
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
                         .strafeTo(new Vector2d(
@@ -100,10 +104,9 @@ public class StudioTestAutoRed extends LinearOpMode {
                         .build()
         );
 
-        // --- Drive forward 10 inches ---
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
-                        .lineToX(drive.localizer.getPose().position.x + 7.25)
+                        .lineToX(drive.localizer.getPose().position.x + 7)
                         .build()
         );
 
@@ -114,25 +117,40 @@ public class StudioTestAutoRed extends LinearOpMode {
         telemetry.addData("Y (in)", "%.1f", pose.position.y);
         telemetry.update();
 
-        // --- Intake sequence ---
         defaultIntakeSequence();
 
-        telemetry.addLine("Auto complete");
-        telemetry.addData("Balls Sorted", ballCount);
-        telemetry.addData("Pattern", storePatternBuilder.toString());
-        telemetry.update();
+        Actions.runBlocking(
+                drive.actionBuilder(drive.localizer.getPose())
+                        .lineToX(drive.localizer.getPose().position.x - 11.5)
+                        .build()
+        );
 
-        sleep(2000);
+        Actions.runBlocking(
+                drive.actionBuilder(drive.localizer.getPose())
+                        .strafeTo(new Vector2d(
+                                drive.localizer.getPose().position.x + 10,
+                                drive.localizer.getPose().position.y
+                        ))
+                        .build()
+        );
+
+        Actions.runBlocking(
+                drive.actionBuilder(drive.localizer.getPose())
+                        .turn(Math.toRadians(85))
+                        .build()
+        );
+
+        defaultLaunchSequence();
     }
 
-    // === Simplified intake sequence copied from StudioRunnerAutoRed ===
     private void defaultIntakeSequence() {
         if (launcherSequenceBusy) return;
         launcherSequenceBusy = true;
 
-        final double NUDGE_DISTANCE = 1.5;
-        final int MAX_NUDGES = 5;
-        final double WAIT_TIME = 2.0;
+        final double SHORT_NUDGE_DISTANCE = 1.25;
+        final double LONG_NUDGE_DISTANCE = 1.5;
+        final int MAX_NUDGES = 3;
+        final double WAIT_TIME = 1.0;
 
         intake.setPower(-1);
         launcherElevator.setPower(0.2);
@@ -144,7 +162,7 @@ public class StudioTestAutoRed extends LinearOpMode {
         rotateSorterToNextSlot();
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
-                        .lineToX(drive.localizer.getPose().position.x + NUDGE_DISTANCE)
+                        .lineToX(drive.localizer.getPose().position.x + SHORT_NUDGE_DISTANCE)
                         .build()
         );
         nudges++;
@@ -158,9 +176,11 @@ public class StudioTestAutoRed extends LinearOpMode {
 
                 rotateSorterToNextSlot();
 
+                double nudgeDistance = (nudges < 2) ? SHORT_NUDGE_DISTANCE : LONG_NUDGE_DISTANCE;
+
                 Actions.runBlocking(
                         drive.actionBuilder(drive.localizer.getPose())
-                                .lineToX(drive.localizer.getPose().position.x + NUDGE_DISTANCE)
+                                .lineToX(drive.localizer.getPose().position.x + nudgeDistance)
                                 .build()
                 );
 
@@ -213,7 +233,7 @@ public class StudioTestAutoRed extends LinearOpMode {
         );
 
         launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
-        sleep(1000);
+        sleep(200);
 
         // --- Ball positions ---
         double[] augPositions = {augPos3, augPos1, augPos2};
