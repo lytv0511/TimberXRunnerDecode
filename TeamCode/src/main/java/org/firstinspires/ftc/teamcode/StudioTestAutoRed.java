@@ -33,6 +33,10 @@ public class StudioTestAutoRed extends LinearOpMode {
 
     // --- Constants copied from StudioRunnerAutoRed ---
     private double ticksPerRevolution = 537.7;
+
+    double pos2 = ticksPerRevolution / 3; // 120°
+    double pos3 = (ticksPerRevolution * 2) / 3; // 240°
+    double pos1 = 0; // 360°
     private double augPos1, augPos2, augPos3;
 
     private boolean launcherSequenceBusy = false;
@@ -128,24 +132,38 @@ public class StudioTestAutoRed extends LinearOpMode {
 
         final double NUDGE_DISTANCE = 1.5;
         final int MAX_NUDGES = 5;
-        final double DETECTION_TIMEOUT = 2.0;
+        final double WAIT_TIME = 2.0;
 
         intake.setPower(-1);
         launcherElevator.setPower(0.2);
-        sensorActive = true;
 
         int nudges = 0;
         ElapsedTime timer = new ElapsedTime();
+
+        // --- Immediate first nudge ---
+        rotateSorterToNextSlot();
+        Actions.runBlocking(
+                drive.actionBuilder(drive.localizer.getPose())
+                        .lineToX(drive.localizer.getPose().position.x + NUDGE_DISTANCE)
+                        .build()
+        );
+        nudges++;
+
         timer.reset();
 
-        while (opModeIsActive() && nudges < MAX_NUDGES && ballCount < 3) {
+        // --- Subsequent: wait → nudge → rotate ---
+        while (opModeIsActive() && nudges < MAX_NUDGES) {
 
-            if (timer.seconds() > DETECTION_TIMEOUT) {
+            if (timer.seconds() >= WAIT_TIME) {
+
+                rotateSorterToNextSlot();
+
                 Actions.runBlocking(
                         drive.actionBuilder(drive.localizer.getPose())
                                 .lineToX(drive.localizer.getPose().position.x + NUDGE_DISTANCE)
                                 .build()
                 );
+
                 nudges++;
                 timer.reset();
             }
@@ -155,9 +173,27 @@ public class StudioTestAutoRed extends LinearOpMode {
 
         intake.setPower(0);
         launcherElevator.setPower(0);
-        sensorActive = false;
 
         launcherSequenceBusy = false;
+    }
+
+    private void rotateSorterToNextSlot() {
+        ballCount++;
+
+        double targetPos;
+        if (ballCount == 1) targetPos = pos1;
+        else if (ballCount == 2) targetPos = pos2;
+        else targetPos = pos3;
+
+        sorter.setTargetPosition((int) targetPos);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.3);
+
+        while (sorter.isBusy() && opModeIsActive()) {
+            idle();
+        }
+
+        sorter.setPower(0);
     }
 
     private void defaultLaunchSequence() {
@@ -187,7 +223,7 @@ public class StudioTestAutoRed extends LinearOpMode {
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
-                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50) // was 1780 now 1680
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50) // was 1680
             {
                 if (gamepad1.x) {
                     canceled = true;
