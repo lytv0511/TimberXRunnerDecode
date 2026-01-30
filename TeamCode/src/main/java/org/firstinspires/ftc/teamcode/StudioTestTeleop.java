@@ -448,219 +448,96 @@ public class StudioTestTeleop extends LinearOpMode {
 //        lastSensorColor = 0;
 //    }
 
-    private void defaultLaunchSequence() {
-        launcherSequenceBusy = true;
-        boolean canceled = false;
-        final double MOVEMENT_DISTANCE = 2.5;
-
-        // --- Configure flywheel ---
-        final double LAUNCHER_TARGET_VELOCITY = GLOBAL_LAUNCHER_TARGET_VELOCITY;
-
-        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        launcherFlywheel.setPIDFCoefficients(
-                DcMotor.RunMode.RUN_USING_ENCODER,
-                new PIDFCoefficients(300, 0, 0, 10)
-        );
-
-        launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
-
-        // Wait briefly for spin-up before starting logic
-        sleep(500);
-
-        double[] augPositions = {augPos3, augPos1, augPos2};
-        boolean firstBall = true;
-
-        for (double augPos : augPositions) {
-
-            // --- 1. First Ball: Wait for Flywheel Velocity & Alignment ---
-            if (firstBall) {
-                while (opModeIsActive() &&
-                        Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50)
-                {
-                    if (gamepad1.x) {
-                        canceled = true;
-                        break;
-                    }
-
-                    // D-Pad alignment logic
-                    boolean currentDpadUp = gamepad1.dpad_up;
-                    boolean currentDpadDown = gamepad1.dpad_down;
-
-                    if (currentDpadUp && !lastDpadUpState) {
-                        Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
-                                .lineToX(MOVEMENT_DISTANCE)
-                                .build());
-                        sleep(100);
-                    } else if (currentDpadDown && !lastDpadDownState) {
-                        Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
-                                .lineToX(-MOVEMENT_DISTANCE)
-                                .build());
-                        sleep(100);
-                    }
-                    lastDpadUpState = currentDpadUp;
-                    lastDpadDownState = currentDpadDown;
-
-                    idle();
-                }
-                if (canceled) break;
-                firstBall = false;
-            }
-
-            // --- 2. Move Sorter (Wait for Completion) ---
-            sorter.setTargetPosition((int) augPos);
-            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.3); // Max speed
-
-            // BLOCKING WAIT: Ensure sorter is physically there before feeding
-            while (opModeIsActive() && sorter.isBusy()) {
-                if (gamepad1.x) {
-                    canceled = true;
-                    break;
-                }
-                idle();
-            }
-
-            // EXTRA SAFETY: Ensure position is actually within tolerance to prevent jams
-            // Sometimes isBusy() finishes slightly early. This ensures alignment.
-            while (opModeIsActive() && Math.abs(sorter.getCurrentPosition() - augPos) > 20) {
-                if (gamepad1.x) { canceled = true; break; }
-                idle();
-            }
-            if (canceled) break;
-
-            // Stop sorter explicitly to hold position
-            sorter.setPower(0);
-
-            // --- 3. Feed Ball (Only runs after Sorter is confirmed aligned) ---
-            launcherElevator.setPower(-1.0);
-            ElapsedTime feedTimer = new ElapsedTime();
-            feedTimer.reset();
-
-            // Short feed time for rapid fire
-            while (feedTimer.seconds() < 0.25 && opModeIsActive()) {
-                if (gamepad1.x) {
-                    canceled = true;
-                    break;
-                }
-                idle();
-            }
-            launcherElevator.setPower(0);
-            if (canceled) break;
-        }
-
-        // --- Cleanup ---
-        if (canceled) {
-            launcherFlywheel.setPower(0);
-            launcherElevator.setPower(0);
-
-            // Reset sorter safely
-            sorter.setTargetPosition(0);
-            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.3);
-            while (sorter.isBusy() && opModeIsActive()) { idle(); }
-            sorter.setPower(0);
-
-            launcherSequenceBusy = false;
-            return;
-        }
-
-        // Reset sorter to 0
-        sorter.setTargetPosition(0);
-        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.3);
-        while (sorter.isBusy() && opModeIsActive()) { idle(); }
-
-        launcherFlywheel.setPower(0);
-        launcherElevator.setPower(0);
-        sorter.setPower(0);
-
-        launcherSequenceBusy = false;
-        ballCount = 0;
-        lastSensorColor = 0;
-    }
-
 //    private void defaultLaunchSequence() {
 //        launcherSequenceBusy = true;
 //        boolean canceled = false;
-//        final double MOVEMENT_DISTANCE = 2.5; // Distance to move in inches per D-pad press
-//        final double DRIVE_POWER = 0.4;
-//        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+//        final double MOVEMENT_DISTANCE = 2.5;
 //
-//        // --- Configure flywheel PIDF with velocity control ---
-//        final double LAUNCHER_TARGET_VELOCITY = 2400; // ticks/sec (faster spin-up)
+//        // --- Configure flywheel ---
+//        final double LAUNCHER_TARGET_VELOCITY = GLOBAL_LAUNCHER_TARGET_VELOCITY;
 //
 //        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 //        launcherFlywheel.setPIDFCoefficients(
 //                DcMotor.RunMode.RUN_USING_ENCODER,
-//                new PIDFCoefficients(450, 0, 0, 15)
+//                new PIDFCoefficients(300, 0, 0, 10)
 //        );
 //
 //        launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
-//        sleep(300);
 //
-//        // --- Ball positions ---
+//        // Wait briefly for spin-up before starting logic
+//        sleep(500);
+//
 //        double[] augPositions = {augPos3, augPos1, augPos2};
+//        boolean firstBall = true;
 //
 //        for (double augPos : augPositions) {
-//            // Wait for flywheel to reach near target speed
-//            ElapsedTime spinTimer = new ElapsedTime();
-//            spinTimer.reset();
-//            while (opModeIsActive() &&
-//                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 150)
-//            {
-//                if (gamepad1.x) {
-//                    canceled = true;
-//                    break;
+//
+//            // --- 1. First Ball: Wait for Flywheel Velocity & Alignment ---
+//            if (firstBall) {
+//                while (opModeIsActive() &&
+//                        Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50)
+//                {
+//                    if (gamepad1.x) {
+//                        canceled = true;
+//                        break;
+//                    }
+//
+//                    // D-Pad alignment logic
+//                    boolean currentDpadUp = gamepad1.dpad_up;
+//                    boolean currentDpadDown = gamepad1.dpad_down;
+//
+//                    if (currentDpadUp && !lastDpadUpState) {
+//                        Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+//                                .lineToX(MOVEMENT_DISTANCE)
+//                                .build());
+//                        sleep(100);
+//                    } else if (currentDpadDown && !lastDpadDownState) {
+//                        Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+//                                .lineToX(-MOVEMENT_DISTANCE)
+//                                .build());
+//                        sleep(100);
+//                    }
+//                    lastDpadUpState = currentDpadUp;
+//                    lastDpadDownState = currentDpadDown;
+//
+//                    idle();
 //                }
-//
-//                boolean currentDpadUp = gamepad1.dpad_up;
-//                boolean currentDpadDown = gamepad1.dpad_down;
-//
-//                if (currentDpadUp && !lastDpadUpState) {
-//                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
-//                            .lineToX(MOVEMENT_DISTANCE)
-//                            .build());
-//                    sleep(300); // Temporary placeholder to simulate blocking movement
-//                } else if (currentDpadDown && !lastDpadDownState) {
-//                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
-//                            .lineToX(-MOVEMENT_DISTANCE)
-//                            .build());
-//                    sleep(300); // Temporary placeholder to simulate blocking movement
-//                }
-//
-//                lastDpadUpState = currentDpadUp;
-//                lastDpadDownState = currentDpadDown;
-//
-//                idle();
+//                if (canceled) break;
+//                firstBall = false;
 //            }
-//            if (canceled) break;
 //
-//            // Move sorter to the ball
+//            // --- 2. Move Sorter (Wait for Completion) ---
 //            sorter.setTargetPosition((int) augPos);
 //            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//            sorter.setPower(0.8);
+//            sorter.setPower(0.3); // Max speed
 //
-//            // Wait for sorter to move
-//            while (sorter.isBusy() && opModeIsActive()) {
+//            // BLOCKING WAIT: Ensure sorter is physically there before feeding
+//            while (opModeIsActive() && sorter.isBusy()) {
 //                if (gamepad1.x) {
 //                    canceled = true;
 //                    break;
 //                }
 //                idle();
 //            }
+//
+//            // EXTRA SAFETY: Ensure position is actually within tolerance to prevent jams
+//            // Sometimes isBusy() finishes slightly early. This ensures alignment.
+//            while (opModeIsActive() && Math.abs(sorter.getCurrentPosition() - augPos) > 20) {
+//                if (gamepad1.x) { canceled = true; break; }
+//                idle();
+//            }
 //            if (canceled) break;
 //
-//            // No fine alignment wait — fire immediately once RUN_TO_POSITION completes
-//
-//            // Ensure motor is stopped after alignment for no drift
+//            // Stop sorter explicitly to hold position
 //            sorter.setPower(0);
 //
-//            // Feed ball using elevator
-//            launcherElevator.setPower(-1.0); // full power, short burst
+//            // --- 3. Feed Ball (Only runs after Sorter is confirmed aligned) ---
+//            launcherElevator.setPower(-1.0);
 //            ElapsedTime feedTimer = new ElapsedTime();
 //            feedTimer.reset();
 //
-//            while (feedTimer.seconds() < 0.35 && opModeIsActive()) {
+//            // Short feed time for rapid fire
+//            while (feedTimer.seconds() < 0.25 && opModeIsActive()) {
 //                if (gamepad1.x) {
 //                    canceled = true;
 //                    break;
@@ -671,40 +548,163 @@ public class StudioTestTeleop extends LinearOpMode {
 //            if (canceled) break;
 //        }
 //
+//        // --- Cleanup ---
 //        if (canceled) {
 //            launcherFlywheel.setPower(0);
 //            launcherElevator.setPower(0);
 //
-//            sorter.setTargetPosition(0); // pos1
+//            // Reset sorter safely
+//            sorter.setTargetPosition(0);
 //            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//            sorter.setPower(0.8);
+//            sorter.setPower(0.3);
 //            while (sorter.isBusy() && opModeIsActive()) { idle(); }
-//
 //            sorter.setPower(0);
-//            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 //
 //            launcherSequenceBusy = false;
 //            return;
 //        }
 //
-//        // Return sorter to position 0
+//        // Reset sorter to 0
 //        sorter.setTargetPosition(0);
 //        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        sorter.setPower(0.8);
+//        sorter.setPower(0.3);
 //        while (sorter.isBusy() && opModeIsActive()) { idle(); }
 //
-//        // Stop all motors safely
 //        launcherFlywheel.setPower(0);
 //        launcherElevator.setPower(0);
 //        sorter.setPower(0);
 //
 //        launcherSequenceBusy = false;
-//
-//        // Reset intake counters
-//        storePatternBuilder.setLength(0);
 //        ballCount = 0;
 //        lastSensorColor = 0;
 //    }
+
+    private void defaultLaunchSequence() {
+        launcherSequenceBusy = true;
+        boolean canceled = false;
+        final double MOVEMENT_DISTANCE = 2.5; // Distance to move in inches per D-pad press
+        final double DRIVE_POWER = 0.4;
+        sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // --- Configure flywheel PIDF with velocity control ---
+        final double LAUNCHER_TARGET_VELOCITY = 2400; // ticks/sec (faster spin-up)
+
+        launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launcherFlywheel.setPIDFCoefficients(
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                new PIDFCoefficients(450, 0, 0, 15)
+        );
+
+        launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
+        sleep(300);
+
+        // --- Ball positions ---
+        double[] augPositions = {augPos3, augPos1, augPos2};
+
+        for (double augPos : augPositions) {
+            // Wait for flywheel to reach near target speed
+            ElapsedTime spinTimer = new ElapsedTime();
+            spinTimer.reset();
+            while (opModeIsActive() &&
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 150)
+            {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+
+                boolean currentDpadUp = gamepad1.dpad_up;
+                boolean currentDpadDown = gamepad1.dpad_down;
+
+                if (currentDpadUp && !lastDpadUpState) {
+                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+                            .lineToX(MOVEMENT_DISTANCE)
+                            .build());
+                    sleep(300); // Temporary placeholder to simulate blocking movement
+                } else if (currentDpadDown && !lastDpadDownState) {
+                    Actions.runBlocking(drive.actionBuilder(new Pose2d(0, 0, 0))
+                            .lineToX(-MOVEMENT_DISTANCE)
+                            .build());
+                    sleep(300); // Temporary placeholder to simulate blocking movement
+                }
+
+                lastDpadUpState = currentDpadUp;
+                lastDpadDownState = currentDpadDown;
+
+                idle();
+            }
+            if (canceled) break;
+
+            // Move sorter to the ball
+            sorter.setTargetPosition((int) augPos);
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.8);
+
+            // Wait for sorter to move
+            while (sorter.isBusy() && opModeIsActive()) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+                idle();
+            }
+            if (canceled) break;
+
+            // No fine alignment wait — fire immediately once RUN_TO_POSITION completes
+
+            // Ensure motor is stopped after alignment for no drift
+            sorter.setPower(0);
+
+            // Feed ball using elevator
+            launcherElevator.setPower(-1.0); // full power, short burst
+            ElapsedTime feedTimer = new ElapsedTime();
+            feedTimer.reset();
+
+            while (feedTimer.seconds() < 0.35 && opModeIsActive()) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+                idle();
+            }
+            launcherElevator.setPower(0);
+            if (canceled) break;
+        }
+
+        if (canceled) {
+            launcherFlywheel.setPower(0);
+            launcherElevator.setPower(0);
+
+            sorter.setTargetPosition(0); // pos1
+            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            sorter.setPower(0.8);
+            while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+            sorter.setPower(0);
+            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+            launcherSequenceBusy = false;
+            return;
+        }
+
+        // Return sorter to position 0
+        sorter.setTargetPosition(0);
+        sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        sorter.setPower(0.8);
+        while (sorter.isBusy() && opModeIsActive()) { idle(); }
+
+        // Stop all motors safely
+        launcherFlywheel.setPower(0);
+        launcherElevator.setPower(0);
+        sorter.setPower(0);
+
+        launcherSequenceBusy = false;
+
+        // Reset intake counters
+        storePatternBuilder.setLength(0);
+        ballCount = 0;
+        lastSensorColor = 0;
+    }
 
     // === Intake/Sorter/Pattern helper methods ===
     private void readColorSensor() {
