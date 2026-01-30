@@ -87,7 +87,25 @@ public class StudioTestAutoBlue extends LinearOpMode {
                         .build()
         );
 
+        Actions.runBlocking(
+                drive.actionBuilder(drive.localizer.getPose())
+                        .strafeTo(new Vector2d(
+                                drive.localizer.getPose().position.x,
+                                drive.localizer.getPose().position.y + 20
+                        ))
+                        .build()
+        );
+
         defaultLaunchSequence();
+
+        Actions.runBlocking(
+                drive.actionBuilder(drive.localizer.getPose())
+                        .strafeTo(new Vector2d(
+                                drive.localizer.getPose().position.x,
+                                drive.localizer.getPose().position.y - 20
+                        ))
+                        .build()
+        );
 
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
@@ -140,8 +158,8 @@ public class StudioTestAutoBlue extends LinearOpMode {
         if (launcherSequenceBusy) return;
         launcherSequenceBusy = true;
 
-        final double SHORT_NUDGE_DISTANCE = 1.25;
-        final double LONG_NUDGE_DISTANCE = 1.5;
+        final double SHORT_NUDGE_DISTANCE = -1.25;
+        final double LONG_NUDGE_DISTANCE = -1.5;
         final int MAX_NUDGES = 3;
         final double WAIT_TIME = 1.0;
 
@@ -268,7 +286,7 @@ public class StudioTestAutoBlue extends LinearOpMode {
 
             sorter.setPower(0);
 
-            // Feed ball
+            // Feed ball upward
             launcherElevator.setPower(-1.0);
             ElapsedTime feedTimer = new ElapsedTime();
             feedTimer.reset();
@@ -280,6 +298,20 @@ public class StudioTestAutoBlue extends LinearOpMode {
                 }
                 idle();
             }
+
+            // Immediately pull elevator back down while flywheel is still spinning
+            launcherElevator.setPower(1.0);
+            ElapsedTime retractTimer = new ElapsedTime();
+            retractTimer.reset();
+
+            while (retractTimer.seconds() < 0.20 && opModeIsActive()) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+                idle();
+            }
+
             launcherElevator.setPower(0);
             if (canceled) break;
         }

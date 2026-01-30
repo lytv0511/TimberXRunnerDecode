@@ -277,7 +277,7 @@ public class StudioTestAutoRed extends LinearOpMode {
 
             sorter.setPower(0);
 
-            // Feed ball
+            // Feed ball upward
             launcherElevator.setPower(-1.0);
             ElapsedTime feedTimer = new ElapsedTime();
             feedTimer.reset();
@@ -289,7 +289,22 @@ public class StudioTestAutoRed extends LinearOpMode {
                 }
                 idle();
             }
+
+            // Immediately pull elevator back down while flywheel is still spinning
+            launcherElevator.setPower(1.0);
+            ElapsedTime retractTimer = new ElapsedTime();
+            retractTimer.reset();
+
+            while (retractTimer.seconds() < 0.20 && opModeIsActive()) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+                idle();
+            }
+
             launcherElevator.setPower(0);
+
             if (canceled) break;
         }
 
