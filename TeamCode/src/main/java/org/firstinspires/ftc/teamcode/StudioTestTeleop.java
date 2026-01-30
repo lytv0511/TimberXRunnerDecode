@@ -509,7 +509,7 @@ public class StudioTestTeleop extends LinearOpMode {
             // --- 2. Move Sorter (Wait for Completion) ---
             sorter.setTargetPosition((int) augPos);
             sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(1.0); // Max speed
+            sorter.setPower(0.3); // Max speed
 
             // BLOCKING WAIT: Ensure sorter is physically there before feeding
             while (opModeIsActive() && sorter.isBusy()) {
@@ -556,7 +556,7 @@ public class StudioTestTeleop extends LinearOpMode {
             // Reset sorter safely
             sorter.setTargetPosition(0);
             sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(1.0);
+            sorter.setPower(0.3);
             while (sorter.isBusy() && opModeIsActive()) { idle(); }
             sorter.setPower(0);
 
@@ -1112,7 +1112,7 @@ public class StudioTestTeleop extends LinearOpMode {
 //            sorter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 //            sorter.setTargetPosition((int) target);
 //            sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//            sorter.setPower(1.0);
+//            sorter.setPower(0.3);
 //            while (sorter.getCurrentPosition() != (int) target || launcherFlywheel.getVelocity() < GLOBAL_LAUNCHER_TARGET_VELOCITY - 50) {
 //                launcherElevator.setPower(1.0);
 //            }
@@ -1205,7 +1205,7 @@ public class StudioTestTeleop extends LinearOpMode {
             launcherFlywheel.setPower(triggerPower);
         }
 
-        launcherFlywheel.setVelocity(GLOBAL_LAUNCHER_TARGET_VELOCITY);
+//        launcherFlywheel.setVelocity(GLOBAL_LAUNCHER_TARGET_VELOCITY);
 
         // Launcher elevator: manual control is always allowed
         if (gamepad1.right_bumper) {
