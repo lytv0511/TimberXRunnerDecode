@@ -220,6 +220,9 @@ public class StudioTestAutoRed extends LinearOpMode {
         launcherSequenceBusy = true;
         boolean canceled = false;
 
+        // Keep elevator slowly spinning downward to prevent jams
+        launcherElevator.setPower(-0.1);
+
         // --- Configure flywheel ---
         final double LAUNCHER_TARGET_VELOCITY = 1780;
 
@@ -277,6 +280,9 @@ public class StudioTestAutoRed extends LinearOpMode {
 
             sorter.setPower(0);
 
+            // Stop anti-jam spin before feeding
+            launcherElevator.setPower(0);
+
             // Feed ball upward
             launcherElevator.setPower(-1.0);
             ElapsedTime feedTimer = new ElapsedTime();
@@ -303,7 +309,8 @@ public class StudioTestAutoRed extends LinearOpMode {
                 idle();
             }
 
-            launcherElevator.setPower(0);
+            // Resume slow anti-jam spin
+            launcherElevator.setPower(-0.1);
 
             if (canceled) break;
         }

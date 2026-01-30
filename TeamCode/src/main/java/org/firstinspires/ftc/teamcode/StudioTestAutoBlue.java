@@ -100,27 +100,18 @@ public class StudioTestAutoBlue extends LinearOpMode {
 
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
-                        .strafeTo(new Vector2d(
-                                drive.localizer.getPose().position.x,
-                                drive.localizer.getPose().position.y - 20
-                        ))
-                        .build()
-        );
-
-        Actions.runBlocking(
-                drive.actionBuilder(drive.localizer.getPose())
                         .turn(Math.toRadians(85))
                         .build()
         );
 
-        Actions.runBlocking(
-                drive.actionBuilder(drive.localizer.getPose())
-                        .strafeTo(new Vector2d(
-                                drive.localizer.getPose().position.x - 10,
-                                drive.localizer.getPose().position.y
-                        ))
-                        .build()
-        );
+//        Actions.runBlocking(
+//                drive.actionBuilder(drive.localizer.getPose())
+//                        .strafeTo(new Vector2d(
+//                                drive.localizer.getPose().position.x - 10,
+//                                drive.localizer.getPose().position.y
+//                        ))
+//                        .build()
+//        );
 
         Actions.runBlocking(
                 drive.actionBuilder(drive.localizer.getPose())
@@ -229,6 +220,9 @@ public class StudioTestAutoBlue extends LinearOpMode {
         launcherSequenceBusy = true;
         boolean canceled = false;
 
+        // Keep elevator slowly spinning downward to prevent jams
+        launcherElevator.setPower(-0.1);
+
         // --- Configure flywheel ---
         final double LAUNCHER_TARGET_VELOCITY = 1780;
 
@@ -286,6 +280,8 @@ public class StudioTestAutoBlue extends LinearOpMode {
 
             sorter.setPower(0);
 
+            // Stop anti-jam spin before feeding
+            launcherElevator.setPower(0);
             // Feed ball upward
             launcherElevator.setPower(-1.0);
             ElapsedTime feedTimer = new ElapsedTime();
@@ -312,7 +308,8 @@ public class StudioTestAutoBlue extends LinearOpMode {
                 idle();
             }
 
-            launcherElevator.setPower(0);
+            // Resume slow anti-jam spin
+            launcherElevator.setPower(-0.1);
             if (canceled) break;
         }
 
