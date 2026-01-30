@@ -207,7 +207,7 @@ public class StudioTestAutoRed extends LinearOpMode {
 
         sorter.setTargetPosition((int) targetPos);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.3);
+        sorter.setPower(-0.3);
 
         while (sorter.isBusy() && opModeIsActive()) {
             idle();
@@ -221,7 +221,7 @@ public class StudioTestAutoRed extends LinearOpMode {
         boolean canceled = false;
 
         // Keep elevator slowly spinning downward to prevent jams
-        launcherElevator.setPower(-0.1);
+        launcherElevator.setPower(0.1);
 
         // --- Configure flywheel ---
         final double LAUNCHER_TARGET_VELOCITY = 1780;
@@ -236,7 +236,7 @@ public class StudioTestAutoRed extends LinearOpMode {
         // Brief spin-up
         sleep(500);
 
-        double[] augPositions = {augPos3, augPos1, augPos2};
+        double[] augPositions = {augPos2, augPos3, augPos1};
         boolean firstBall = true;
 
         for (double augPos : augPositions) {
@@ -258,7 +258,7 @@ public class StudioTestAutoRed extends LinearOpMode {
             // Move sorter
             sorter.setTargetPosition((int) augPos);
             sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.3);
+            sorter.setPower(-0.3);
 
             while (opModeIsActive() && sorter.isBusy()) {
                 if (gamepad1.x) {
@@ -279,9 +279,6 @@ public class StudioTestAutoRed extends LinearOpMode {
             if (canceled) break;
 
             sorter.setPower(0);
-
-            // Stop anti-jam spin before feeding
-            launcherElevator.setPower(0);
 
             // Feed ball upward
             launcherElevator.setPower(-1.0);
@@ -318,7 +315,7 @@ public class StudioTestAutoRed extends LinearOpMode {
         // Cleanup / reset
         sorter.setTargetPosition(0);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.3);
+        sorter.setPower(-0.3);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
 
         launcherFlywheel.setPower(0);
