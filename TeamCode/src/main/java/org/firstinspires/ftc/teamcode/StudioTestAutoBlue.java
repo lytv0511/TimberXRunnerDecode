@@ -228,16 +228,16 @@ public class StudioTestAutoBlue extends LinearOpMode {
         sorter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // --- Configure flywheel PIDF with velocity control ---
-        final double LAUNCHER_TARGET_VELOCITY = 2400; // ticks/sec (faster spin-up)
+        final double LAUNCHER_TARGET_VELOCITY = 1680; // ticks/sec
 
         launcherFlywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         launcherFlywheel.setPIDFCoefficients(
                 DcMotor.RunMode.RUN_USING_ENCODER,
-                new PIDFCoefficients(450, 0, 0, 15)
+                new PIDFCoefficients(300, 0, 0, 10)
         );
 
         launcherFlywheel.setVelocity(LAUNCHER_TARGET_VELOCITY);
-        sleep(300);
+        sleep(200);
 
         // --- Ball positions ---
         double[] augPositions = {augPos3, augPos1, augPos2};
@@ -247,7 +247,7 @@ public class StudioTestAutoBlue extends LinearOpMode {
             ElapsedTime spinTimer = new ElapsedTime();
             spinTimer.reset();
             while (opModeIsActive() &&
-                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 150)
+                    Math.abs(launcherFlywheel.getVelocity() - LAUNCHER_TARGET_VELOCITY) > 50)
             {
                 if (gamepad1.x) {
                     canceled = true;
@@ -279,7 +279,7 @@ public class StudioTestAutoBlue extends LinearOpMode {
             // Move sorter to the ball
             sorter.setTargetPosition((int) augPos);
             sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.8);
+            sorter.setPower(0.3);
 
             // Wait for sorter to move
             while (sorter.isBusy() && opModeIsActive()) {
@@ -291,17 +291,31 @@ public class StudioTestAutoBlue extends LinearOpMode {
             }
             if (canceled) break;
 
-            // No fine alignment wait — fire immediately once RUN_TO_POSITION completes
+            // Wait until the sorter is within a small tolerance of the target position
+            ElapsedTime alignmentTimer = new ElapsedTime();
+            alignmentTimer.reset();
+            int tolerance = 10;
+
+            while (opModeIsActive() &&
+                    Math.abs(sorter.getCurrentPosition() - (int)augPos) > tolerance &&
+                    alignmentTimer.seconds() < 0.5) {
+                if (gamepad1.x) {
+                    canceled = true;
+                    break;
+                }
+                idle();
+            }
+            if (canceled) break;
 
             // Ensure motor is stopped after alignment for no drift
             sorter.setPower(0);
 
             // Feed ball using elevator
-            launcherElevator.setPower(-1.0); // full power, short burst
+            launcherElevator.setPower(-1.0);
             ElapsedTime feedTimer = new ElapsedTime();
             feedTimer.reset();
 
-            while (feedTimer.seconds() < 0.35 && opModeIsActive()) {
+            while (feedTimer.seconds() < 0.7 && opModeIsActive()) {
                 if (gamepad1.x) {
                     canceled = true;
                     break;
@@ -318,7 +332,7 @@ public class StudioTestAutoBlue extends LinearOpMode {
 
             sorter.setTargetPosition(0); // pos1
             sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            sorter.setPower(0.8);
+            sorter.setPower(0.3);
             while (sorter.isBusy() && opModeIsActive()) { idle(); }
 
             sorter.setPower(0);
@@ -331,7 +345,7 @@ public class StudioTestAutoBlue extends LinearOpMode {
         // Return sorter to position 0
         sorter.setTargetPosition(0);
         sorter.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        sorter.setPower(0.8);
+        sorter.setPower(0.3);
         while (sorter.isBusy() && opModeIsActive()) { idle(); }
 
         // Stop all motors safely
