@@ -37,7 +37,10 @@ import java.util.List;
 public class PollenVision {
 
     // ---- Color mode: 0=YELLOW, 1=GREEN, 2=RED, 3=BLUE, 4=ARTIFACT_GREEN, 5=ARTIFACT_PURPLE, 6=CUSTOM_HSV ----
-    public static int COLOR_MODE = 0; // default YELLOW for BIOBUZZ pollen
+    // DECODE-season artifact balls: ARTIFACT_GREEN(4) and ARTIFACT_PURPLE(5) are SDK-tuned for those exact colors.
+    // No real balls available yet, so default to ARTIFACT_GREEN (the primary DECODE test ball); switch to
+    // ARTIFACT_PURPLE or CUSTOM_HSV via Dashboard during calibration.
+    public static int COLOR_MODE = 4; // default ARTIFACT_GREEN for DECODE test balls
 
     // ---- Custom HSV bounds (used when COLOR_MODE = 6) ----
     // HSV ranges: H=0-180, S=0-255, V=0-255
@@ -127,6 +130,12 @@ public class PollenVision {
         init(hw, camName, new Size(640, 480));
     }
 
+    /** Close current portal and re-init so Dashboard color/filter changes take effect live. */
+    public void rebuild(HardwareMap hw, String camName, Size resolution) {
+        close();
+        init(hw, camName, resolution);
+    }
+
     private ColorRange buildColorRange() {
         return switch (COLOR_MODE) {
             case 0 -> ColorRange.YELLOW;
@@ -140,6 +149,20 @@ public class PollenVision {
                     new Scalar(CUSTOM_H_MIN, CUSTOM_S_MIN, CUSTOM_V_MIN),
                     new Scalar(CUSTOM_H_MAX, CUSTOM_S_MAX, CUSTOM_V_MAX));
             default -> ColorRange.YELLOW;
+        };
+    }
+
+    /** Human-readable name of current COLOR_MODE for telemetry. */
+    public static String colorModeName() {
+        return switch (COLOR_MODE) {
+            case 0 -> "YELLOW";
+            case 1 -> "GREEN";
+            case 2 -> "RED";
+            case 3 -> "BLUE";
+            case 4 -> "ARTIFACT_GREEN";
+            case 5 -> "ARTIFACT_PURPLE";
+            case 6 -> "CUSTOM_HSV";
+            default -> "UNKNOWN";
         };
     }
 

@@ -10,27 +10,30 @@ import org.opencv.core.RotatedRect;
 import java.util.List;
 
 /**
- * Vision calibration tool for BIOBUZZ Pollen detection.
- * Run this TeleOp on the robot with Pollen balls at known distances.
+ * Vision calibration tool for DECODE/BIOBUZZ ball detection.
+ * Run this TeleOp on the robot with test balls (green/purple for DECODE, yellow for BIOBUZZ)
+ * at known distances.
  *
- * What to do:
- * 1. Place Pollen ball at 12" from camera
- * 2. Look at Driver Station telemetry — see if contours appear
- * 3. If no detection: change COLOR_MODE (0-6) in Dashboard until contours show
- * 4. If COLOR_MODE=6 (custom): tune CUSTOM_H/S/V until yellow ball is detected
- * 5. Read "pixD" from telemetry — call suggestFocal(pixD, 12.0) → set FOCAL_PX
- * 6. Move ball to 6", 12", 24", 36" — verify "range" matches known distance
- * 7. Tune MIN_AREA_PX to reject floor glare (raise if floor is detected)
- * 8. Tune MIN_SOLIDITY to reject shadows (raise if shadows pass)
+ * DECODE-season balls only (green + purple artifacts):
+ *   Default COLOR_MODE = 4 (ARTIFACT_GREEN) — SDK-tuned for the green artifact ball.
+ *   For purple, set COLOR_MODE = 5 (ARTIFACT_PURPLE).
+ *   These presets are exact YCrCb ranges from the FTC SDK and need no manual HSV.
  *
- * Dashboard fields (all @Config, live-adjustable):
- *   COLOR_MODE       — 0=YELLOW 1=GREEN 2=RED 3=BLUE 4=ARTIFACT_GREEN 5=ARTIFACT_PURPLE 6=CUSTOM
- *   CUSTOM_H/S/V     — custom HSV bounds (when COLOR_MODE=6)
- *   FOCAL_PX          — pinhole focal length (start at 560 for 640x480)
- *   CAMERA_FOV_DEG    — camera horizontal FOV (check webcam spec)
- *   MIN_AREA_PX       — reject small blobs
- *   MIN_SOLIDITY      — reject unfilled contours
- *   MIN/MAX_ASPECT_RATIO — reject non-spherical blobs
+ * Workflow (no real yellow balls yet — use green/purple to verify the pipeline):
+ * 1. Place a ball at CALIBRATE_DISTANCE (12") from camera
+ * 2. Set COLOR_MODE to match the ball's color (4=green, 5=purple)
+ * 3. Toggle REBUILD=1 then back to 0 in Dashboard to apply the color change live
+ * 4. Read "pixD" from telemetry → set FOCAL_PX = suggested value (rough: 560 for 640x480)
+ * 5. Verify "range" ≈ actual distance at 6"/12"/24"/36"
+ * 6. Tune MIN_AREA_PX (raise if floor glare detected), MIN_SOLIDITY (raise if shadows pass)
+ *
+ * Dashboard fields (all @Config):
+ *   COLOR_MODE            — 0=YELLOW 1=GREEN 2=RED 3=BLUE 4=ARTIFACT_GREEN 5=ARTIFACT_PURPLE 6=CUSTOM
+ *   CUSTOM_H/S/V          — custom HSV bounds (COLOR_MODE=6)
+ *   REBUILD (0/1)         — toggle to re-apply COLOR_MODE/HSV/filter changes live (no restart)
+ *   FOCAL_PX              — pinhole focal length (560 = rough 640x480 default)
+ *   CAMERA_FOV_DEG        — camera horizontal FOV
+ *   MIN_AREA_PX, MIN_SOLIDITY, MIN/MAX_ASPECT_RATIO — filters
  */
 @Config
 @TeleOp(name = "VisionCalibration", group = "Calibration")
@@ -38,6 +41,8 @@ public class VisionCalibration extends LinearOpMode {
 
     // Reference distance for focal calibration — place ball at this distance
     public static double CALIBRATE_DISTANCE_IN = 12.0;
+    // Toggle 0->1 (then back to 0) in Dashboard to re-apply color/filter changes live
+    public static double REBUILD = 0;
 
     @Override
     public void runOpMode() {
@@ -45,20 +50,31 @@ public class VisionCalibration extends LinearOpMode {
         vision.init(hardwareMap, "Webcam 1");
 
         telemetry.addLine("=== VisionCalibration ===");
-        telemetry.addLine("Place Pollen at CALIBRATE_DISTANCE from camera");
+        telemetry.addLine("Place a ball at CALIBRATE_DISTANCE from camera");
         telemetry.addData("Calib dist", CALIBRATE_DISTANCE_IN + " in");
-        telemetry.addLine("Tune COLOR_MODE + FOCAL_PX in Dashboard");
+        telemetry.addLine("COLOR_MODE 4=green 5=purple; toggle REBUILD to apply");
         telemetry.update();
 
         waitForStart();
 
+        double lastRebuild = REBUILD;
+
         while (opModeIsActive()) {
+            // Hot-reload when user toggles REBUILD in Dashboard
+            if (REBUILD != lastRebuild) {
+                lastRebuild = REBUILD;
+                telemetry.addLine("Rebuilding processor with new color/filter...");
+                telemetry.update();
+                vision.rebuild(hardwareMap, "Webcam 1",
+                        new android.util.Size(640, 480));
+            }
+
             PollenVision.Detection d = vision.poll();
 
             // === Raw blobs (before scoring, for debugging) ===
             List<ColorBlobLocatorProcessor.Blob> raw = vision.getRawBlobs();
             telemetry.addData("Raw blobs", raw.size());
-            telemetry.addData("Color mode", PollenVision.COLOR_MODE);
+            telemetry.addData("Color mode", PollenVision.colorModeName() + " (" + PollenVision.COLOR_MODE + ")");
             telemetry.addData("FOCAL_PX", PollenVision.FOCAL_PX);
 
             if (d != null) {
@@ -79,7 +95,7 @@ public class VisionCalibration extends LinearOpMode {
                         suggested, CALIBRATE_DISTANCE_IN);
             } else {
                 telemetry.addLine("--- NO DETECTION ---");
-                telemetry.addLine("Adjust COLOR_MODE or CUSTOM HSV in Dashboard");
+                telemetry.addLine("Set COLOR_MODE (4=green/5=purple), toggle REBUILD");
             }
 
             // Show all raw blobs for debugging
@@ -102,3 +118,4 @@ public class VisionCalibration extends LinearOpMode {
         vision.close();
     }
 }
+
