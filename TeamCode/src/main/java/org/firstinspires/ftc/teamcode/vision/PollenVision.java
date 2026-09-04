@@ -137,33 +137,33 @@ public class PollenVision {
     }
 
     private ColorRange buildColorRange() {
-        return switch (COLOR_MODE) {
-            case 0 -> ColorRange.YELLOW;
-            case 1 -> ColorRange.GREEN;
-            case 2 -> ColorRange.RED;
-            case 3 -> ColorRange.BLUE;
-            case 4 -> ColorRange.ARTIFACT_GREEN;
-            case 5 -> ColorRange.ARTIFACT_PURPLE;
-            case 6 -> new ColorRange(
-                    ColorSpace.HSV,
-                    new Scalar(CUSTOM_H_MIN, CUSTOM_S_MIN, CUSTOM_V_MIN),
-                    new Scalar(CUSTOM_H_MAX, CUSTOM_S_MAX, CUSTOM_V_MAX));
-            default -> ColorRange.YELLOW;
-        };
+        switch (COLOR_MODE) {
+            case 1: return ColorRange.GREEN;
+            case 2: return ColorRange.RED;
+            case 3: return ColorRange.BLUE;
+            case 4: return ColorRange.ARTIFACT_GREEN;
+            case 5: return ColorRange.ARTIFACT_PURPLE;
+            case 6:
+                return new ColorRange(
+                        ColorSpace.HSV,
+                        new Scalar(CUSTOM_H_MIN, CUSTOM_S_MIN, CUSTOM_V_MIN),
+                        new Scalar(CUSTOM_H_MAX, CUSTOM_S_MAX, CUSTOM_V_MAX));
+            default: return ColorRange.YELLOW;
+        }
     }
 
     /** Human-readable name of current COLOR_MODE for telemetry. */
     public static String colorModeName() {
-        return switch (COLOR_MODE) {
-            case 0 -> "YELLOW";
-            case 1 -> "GREEN";
-            case 2 -> "RED";
-            case 3 -> "BLUE";
-            case 4 -> "ARTIFACT_GREEN";
-            case 5 -> "ARTIFACT_PURPLE";
-            case 6 -> "CUSTOM_HSV";
-            default -> "UNKNOWN";
-        };
+        switch (COLOR_MODE) {
+            case 0: return "YELLOW";
+            case 1: return "GREEN";
+            case 2: return "RED";
+            case 3: return "BLUE";
+            case 4: return "ARTIFACT_GREEN";
+            case 5: return "ARTIFACT_PURPLE";
+            case 6: return "CUSTOM_HSV";
+            default: return "UNKNOWN";
+        }
     }
 
     // ---- Core: poll once per loop iteration ----
