@@ -1,40 +1,27 @@
 package org.firstinspires.ftc.teamcode.autonomous;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-
-import org.firstinspires.ftc.teamcode.autonomous.search.SearchAndIntakeAction;
-import org.firstinspires.ftc.teamcode.autonomous.search.SearchPlanner;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 /**
- * Real autonomous — NO hard-coded field paths.
- * Robot moves to high-probability pollen cells and vision-servos to intake.
+ * Search-style autonomous on the Basic Mecanum config.
  *
- * How it solves the historic struggle:
- *  - Old autos blocked vision inside Actions.runBlocking trajectories → missed pollen.
- *  - This auto interleaves: SearchPlanner picks next cell → short spline → ScanAction sweeps
- *    while polling PollenVision every 15ms → VisionApproachAction servos with mecanum powers.
- *  - Probability field decays visited cells, boosts neighbors (piles), re-ranks by distance.
- *
- * Tune in Dashboard: BioBuzzConstants, PollenVision, VisionApproachAction, SearchPlanner.
- * Calibrate PollenVision.FOCAL_PX once (12" test). Then run PreseasonBioBuzzBench MODE 3/4 for walls/corners.
+ * The original version used PollenVision + SearchPlanner, but this config has
+ * no camera, so it runs a timed sweep-and-intake pattern instead. "Collected"
+ * is a timed estimate — there is no sensor on this robot to confirm a ball.
+ * The vision/search classes are still in the tree for a camera-equipped config.
  */
 @Config
 @Autonomous(name = "BioBuzzSearchAuto", group = "Autonomous")
 public class BioBuzzSearchAuto extends BioBuzzAutoBase {
 
-    // ---- Dashboard tunables ----
     public static boolean ALLIANCE_IS_BLUE = false;
     public static int TARGET_POLLEN = 5;
-    public static double TIMEOUT_SEC = 26.0; // leave 4s buffer for 30s auto
-    public static double SAFE_BACKOFF_IN = 3.5; // clear wall before search
-
-    @Override
-    protected Pose2d getStartPose() {
-        return new Pose2d(0, 0, 0);
-    }
+    public static double TIMEOUT_SEC = 22.0; // leaves time to shoot/stop inside 30s
+    public static double BACKOFF_S = 0.35;
+    public static double HOP_S = 0.45;
+    public static double SWEEP_S = 0.35;
 
     @Override
     protected double getAllianceSign() {
@@ -43,33 +30,29 @@ public class BioBuzzSearchAuto extends BioBuzzAutoBase {
 
     @Override
     protected void runAuto() {
-        // 1) Safe nudge off wall — only hard-coded move (field-agnostic, <6in)
-        if (SAFE_BACKOFF_IN > 0.5) {
-            Pose2d cur = drive.localizer.getPose();
-            Actions.runBlocking(drive.actionBuilder(cur).lineToX(cur.position.x - SAFE_BACKOFF_IN).build());
-            telemetry.addData("Backoff", SAFE_BACKOFF_IN);
+        backOffWall(BACKOFF_S);
+
+        ElapsedTime timer = new ElapsedTime();
+        int collected = 0;
+        boolean sweepRight = true;
+
+        while (opModeIsActive() && timer.seconds() < TIMEOUT_SEC && collected < TARGET_POLLEN) {
+            // Short intake hop, then sweep the other direction to cover the area.
+            pollen.nudgeIntake(HOP_S);
+            turnBy(SWEEP_S, BioBuzzConstants.DRIVE_TURN_POWER * (sweepRight ? 1.0 : -1.0));
+            sweepRight = !sweepRight;
+
+            collected++;
+            ballCount = collected;
+            telemetry.addData("Collected (timed estimate)", collected);
             telemetry.update();
         }
 
-        // 2) Optional: if you know your alliance station is at known pose, seed planner center nearer to you.
-        //    Otherwise default planner (walls/corners/lines) is fine for preseason.
-
-        // 3) Search — this is the real autonomous, not a trajectory list
-        telemetry.addLine("Starting vision search...");
-        telemetry.addData("Target", TARGET_POLLEN);
-        telemetry.update();
-
-        int got = runSearchAndIntake(TARGET_POLLEN, TIMEOUT_SEC);
-
-        // 4) Score — BIOBUZZ base-station deposit not yet revealed.
-        //    For preseason, just stop with pollen held. Post-kickoff: replace with:
-        //    drive to baseStation pose (from planner) → outtake (elevator/reverse intake)
-        telemetry.addData("Acquired", got);
-        telemetry.addData("Final", drive.localizer.getPose());
-        telemetry.update();
-
-        // 5) Hold for telemetry before stop
-        waitSeconds(0.8);
         intakeOff();
+        telemetry.addData("Acquired", collected);
+        telemetry.update();
+
+        waitSeconds(0.5);
+        shoot(Math.min(collected, BioBuzzConstants.AUTO_MAX_POLLEN));
     }
 }

@@ -2,6 +2,8 @@
 
 Date: 2026-08-24 | Base: DECODE (Artifacts) → BIOBUZZ Pollen (3" balls) | Kickoff 2026-09-12
 
+> **CURRENT CONFIG:** `StudioTestTeleop` and all five autos now use the Basic Mecanum 8-device config: `leftFront`/`rightFront`/`leftBack`/`rightBack` (DcMotor), `leftIntake`/`rightIntake` (CRServo), `intakeWheel`, `rubber`. Autos are open-loop and timed via `BasicMecanumDrive` + `BioBuzzAutoBase`; the launcher/sorter/elevator/camera/color-sensor hardware described below is no longer mapped. See `BioBuzzConstants` for the timed tunables.
+
 ## What was done (hardware untouched)
 
 **Build:**
@@ -34,7 +36,7 @@ TeamCode/src/main/java/org/firstinspires/ftc/teamcode/autonomous/
 
 - Replace placeholder distances (`-51in`, `10°`, etc.) with field coordinates; switch `lineToX` → `splineTo/strafeTo(Vector2d)`.
 - Decide sorter: BIOBUZZ preview shows bulk transfer, not GPP/PGP sorting — likely delete `sorterTo()` / `augPos*` and make intake hold N pollen.
-- Tune localizer: `MecanumDrive.java:253` uses `ThreeDeadWheelLocalizer` on drive encoders — calibrate or swap to `PinpointLocalizer` (offsets still 0).
+- Localizer: `MecanumDrive` now uses `PinpointLocalizer` — 2 odometry pods + goBILDA Pinpoint. See `doc/ODOMETRY_PINPOINT.md` for pod/offset/direction setup and `StudioRunnerTestAuto` for a 10in-forward / 10in-right / 180° check.
 - Pollen vision: retune `BallDetection.java`/`StudioAprilTag.java` ColorRange from green/purple to Pollen yellow.
 
 Hardware names preserved: `leftFront/leftBack/rightBack/rightFront`, `imu`, `launcherFlywheel`, `launcherElevator`, `sorter`, `intake`, `Webcam 1`, `colorSensor`, `signalServo`.

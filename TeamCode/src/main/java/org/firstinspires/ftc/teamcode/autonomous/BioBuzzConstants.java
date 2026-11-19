@@ -3,51 +3,55 @@ package org.firstinspires.ftc.teamcode.autonomous;
 import com.acmerobotics.dashboard.config.Config;
 
 /**
- * Preseason constants for BIOBUZZ (2026-27 CANOPY).
- * Field/scoring not yet revealed — values are tunable placeholders for planning-stage workflows.
- * Update after 2026-09-12 kickoff and V1 manual.
+ * Tunables for BIOBUZZ autos running on the Basic Mecanum configuration:
+ *   leftFront/rightFront/leftBack/rightBack (DcMotor),
+ *   leftIntake/rightIntake (CRServo), intakeWheel, rubber.
+ *
+ * This config has no IMU, encoders, camera, color sensor, sorter or elevator,
+ * so every movement is open-loop and timed. Tune the seconds values on the tiles.
  */
 @Config
 public final class BioBuzzConstants {
     private BioBuzzConstants() {}
 
-    // --- Pollen (scoring element) ---
-    /** Diameter ~3in, same class as DECODE Artifacts. Keep intake tuned to 3in balls. */
+    // --- Scoring element ---
     public static double POLLEN_DIAMETER_IN = 3.0;
-    /** Approx weight not yet published — tune after AndyMark delivery. */
-    public static double POLLEN_DIAMETER_TOL_IN = 0.15;
 
-    // --- Intake (hardware unchanged — leave mapping alone) ---
-    public static double INTAKE_POWER = -1.0;
-    public static double INTAKE_IDLE_POWER = 0.0;
-    public static double ELEVATOR_FEED_POWER = -1.0;
-    public static double ELEVATOR_HOLD_POWER = 0.2;
-    // Sorter 3-slot positions (ticks) — DECODE heritage, keep for now until BIOBUZZ sort/no-sort decided
-    public static double TICKS_PER_REV = 537.7;
-    public static double SORTER_POS_0 = 0;
-    public static double SORTER_POS_1 = 537.7 / 3.0;          // 120°
-    public static double SORTER_POS_2 = 537.7 * 2.0 / 3.0;     // 240°
-    public static double SORTER_POWER = 0.30;
+    // --- Mechanism powers (same signs as StudioTestTeleop's right-trigger action) ---
+    public static double LEFT_INTAKE_POWER = 1.0;
+    public static double RIGHT_INTAKE_POWER = -1.0;
+    public static double INTAKE_WHEEL_POWER = 1.0;
+    public static double RUBBER_POWER = -1.0;
 
-    // --- Launcher (DECODE — likely unused in BIOBUZZ bulk-transfer, keep for reference) ---
-    public static double LAUNCHER_TARGET_VEL = 1680; // ticks/s
-    public static double LAUNCHER_VEL_TOL = 50;
-    public static double LAUNCHER_SPINUP_MS = 500;
+    // --- Open-loop drive powers ---
+    public static double DRIVE_FORWARD_POWER = 0.55;
+    public static double DRIVE_STRAFE_POWER = 0.45;
+    public static double DRIVE_TURN_POWER = 0.40;
 
-    // --- Drive planning (tune after field CAD) ---
-    /** Preseason test distances — replace with field coordinates post-kickoff. */
-    public static double NUDGE_SHORT_IN = 1.25;
-    public static double NUDGE_LONG_IN = 1.50;
-    public static double WALL_APPROACH_IN = 7.0;
-    public static double CORNER_STRAFE_IN = 10.0;
-    public static double PILE_SPACING_IN = 6.0;
+    // --- Timed moves (seconds) ---
+    public static double BACKOFF_S = 0.35;
+    public static double NUDGE_SHORT_S = 0.30;
+    public static double NUDGE_LONG_S = 0.50;
+    public static double WALL_APPROACH_S = 0.80;
+    public static double CORNER_STRAFE_S = 0.70;
+    public static double PILE_SPACING_S = 0.45;
+    public static double INTAKE_SETTLE_S = 0.20;
+    public static double INTAKE_HOLD_S = 0.45;
 
-    // --- Autonomous timing ---
-    public static double AUTO_INTAKE_TIMEOUT_S = 8.0;
-    public static double AUTO_FEED_S = 0.25;
-    public static int AUTO_MAX_POLLEN = 3; // BIOBUZZ preview: intake multiple
+    // --- Timed search pattern ---
+    public static double SEARCH_HOP_S = 0.45;
+    public static double SEARCH_SWEEP_S = 0.35;
+
+    // --- Shooting ---
+    public static double SHOOT_SPINUP_S = 0.60;
+    public static double SHOOT_FEED_S = 0.40;
+    public static double SHOOT_GAP_S = 0.15;
+
+    // --- Auto timing ---
+    public static double AUTO_TIMEOUT_S = 22.0; // leaves time to shoot/stop inside 30s
+    public static int AUTO_MAX_POLLEN = 3;
 
     // --- Alliance mirroring ---
-    public static double BLUE_SIGN = -1.0; // Blue mirrors Red heading
+    public static double BLUE_SIGN = -1.0;
     public static double RED_SIGN = 1.0;
 }

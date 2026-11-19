@@ -250,7 +250,10 @@ public final class MecanumDrive {
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
-        localizer = new ThreeDeadWheelLocalizer(hardwareMap, PARAMS.inPerTick, pose);
+        // Odometry: 2 dead-wheel pods + goBILDA Pinpoint (internal IMU for heading).
+        // Configure a device named "pinpoint" and tune PinpointLocalizer.PARAMS
+        // for the pod type/offsets/directions before running.
+        localizer = new PinpointLocalizer(hardwareMap, pose);
 
         FlightRecorder.write("MECANUM_PARAMS", PARAMS);
     }

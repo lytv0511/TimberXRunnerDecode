@@ -1,28 +1,23 @@
 package org.firstinspires.ftc.teamcode.autonomous;
 
 import com.acmerobotics.dashboard.config.Config;
-import com.acmerobotics.roadrunner.Pose2d;
-import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 /**
- * Bench for BIOBUZZ Skill Builders — run on practice tiles with Pollen.
- * Select mode in Dashboard or edit before run. No field dependencies.
- * Hardware unchanged.
+ * Bench for BIOBUZZ drills on the Basic Mecanum config.
+ * All movements are timed — no field coordinates or camera.
  */
 @Config
 @Autonomous(name = "PreseasonBioBuzzBench", group = "Preseason")
 public class PreseasonBioBuzzBench extends BioBuzzAutoBase {
 
-    public static int MODE = 0; // 0=floor hard-coded, 1=line, 2=pile, 3=wall, 4=corner, 5=nav waypoints, 6=VISION search (real)
-    public static double WAYPOINT_X = 24;
-    public static double WAYPOINT_Y = 12;
-    public static int VISION_TARGET = 3;
-
-    @Override
-    protected Pose2d getStartPose() {
-        return new Pose2d(0, 0, 0);
-    }
+    public static int MODE = 0; // 0=floor, 1=line, 2=pile, 3=wall, 4=corner, 5=timed nav, 6=timed search
+    public static double WAYPOINT_1_S = 0.60;
+    public static double WAYPOINT_2_S = 0.80;
+    public static double WAYPOINT_3_S = 0.60;
+    public static int SEARCH_TARGET = 3;
+    public static double SEARCH_TIMEOUT_S = 12.0;
 
     @Override
     protected double getAllianceSign() {
@@ -51,32 +46,36 @@ public class PreseasonBioBuzzBench extends BioBuzzAutoBase {
                 pollen.intakeFromCorner();
                 break;
             case 5:
-                pollen.navigateAndIntake(
-                        new Pose2d(12, 0, 0),
-                        new Pose2d(WAYPOINT_X, WAYPOINT_Y, Math.toRadians(45)),
-                        new Pose2d(36, 0, Math.toRadians(-30))
-                );
+                pollen.navigateAndIntake(WAYPOINT_1_S, WAYPOINT_2_S, WAYPOINT_3_S);
                 break;
             case 6:
-                // Real vision search — use this to validate wall/corner priors
-                int got = runSearchAndIntake(VISION_TARGET, 20.0);
-                telemetry.addData("Vision got", got);
+                // Timed search pattern (no camera on this config).
+                ElapsedTime timer = new ElapsedTime();
+                int collected = 0;
+                boolean right = true;
+                while (opModeIsActive() && timer.seconds() < SEARCH_TIMEOUT_S
+                        && collected < SEARCH_TARGET) {
+                    pollen.nudgeIntake(BioBuzzConstants.SEARCH_HOP_S);
+                    turnBy(BioBuzzConstants.SEARCH_SWEEP_S,
+                            BioBuzzConstants.DRIVE_TURN_POWER * (right ? 1.0 : -1.0));
+                    right = !right;
+                    collected++;
+                }
+                telemetry.addData("Timed search got", collected);
                 telemetry.update();
                 break;
             default:
-                // Full cycle: floor -> wall -> corner
                 pollen.intakeLine(2);
-                driveLineToX(8);
+                driveForward(0.60);
                 pollen.intakeOffWall();
-                strafeBy(6);
+                strafeBy(0.50, BioBuzzConstants.DRIVE_STRAFE_POWER);
                 pollen.intakeFromCorner();
                 break;
         }
+
         intakeOff();
 
-        Pose2d p = drive.localizer.getPose();
-        telemetry.addData("End X", "%.1f", p.position.x);
-        telemetry.addData("End Y", "%.1f", p.position.y);
+        telemetry.addData("Balls handled", ballCount);
         telemetry.update();
         waitSeconds(1.0);
     }

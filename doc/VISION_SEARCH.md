@@ -1,5 +1,7 @@
 # Real Autonomous — Vision Search, Not Hard-Coded Paths
 
+> **CURRENT STATUS:** These `autonomous/search/*` classes are retained but not used by the autos. The Basic Mecanum config has no camera, IMU, or encoders, so autos now run timed open-loop routines in `BioBuzzAutoBase` / `BasicMecanumDrive`. Re-enable the vision stack only on a config that provides `Webcam 1` and RoadRunner drive hardware.
+
 **Problem you hit:** hard-coded `lineToX(-51)` / `turn(10)` / `strafe(-10)` dies when pollen isn’t there, and `Actions.runBlocking` blocks vision so you never see it. This replaces paths with **probability + servo**.
 
 ## Architecture (new files)
