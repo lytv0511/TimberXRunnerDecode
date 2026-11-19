@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
  * Open-loop mecanum drive for the Basic Mecanum hardware config:
  *   leftFront, rightFront, leftBack, rightBack (DcMotor).
  *
- * Uses the same power mixing and directions as StudioTestTeleop.
+ * Standard mecanum power mixing; rightFront and rightBack are reversed.
  * No IMU, encoders, odometry, or RoadRunner trajectories — all movement is
  * expressed as timed power commands by the calling OpMode.
  */

@@ -12,6 +12,12 @@
 
 Drive motors are still `leftFront`, `rightFront`, `leftBack`, `rightBack`.
 
+The Limelight 3A (`limelight`, USB 3.0, AprilTags) and the Logitech webcam
+(`webcam`, USB 2.0, yellow/red/blue pollen color) are separate vision sensors.
+Neither device's results are fed into `PinpointLocalizer` — odometry remains
+pod + Pinpoint only. AprilTag relocalization is deferred, and the held-A
+auto-intake assist closes its loop on webcam bearing/range without odometry.
+
 ## Dashboard tuning — `PinpointLocalizer.PARAMS`
 
 | Field | Meaning |
