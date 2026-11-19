@@ -21,7 +21,7 @@ All other custom opmodes and their helpers were removed: `StudioTestTeleop`, `St
 - `StudioRunnerTestTeleop` uses `BasicMecanumDrive` (open-loop, 4 DcMotors). `rightFront` and `rightBack` are reversed.
 - `StudioRunnerTestAuto` uses `MecanumDrive` + `PinpointLocalizer`: 2 odometry pods + goBILDA Pinpoint computer named `pinpoint`.
 - The 180° spin in the test auto uses a heading-only loop with zero translation each iteration — it does **not** use RoadRunner `TurnAction`.
-- See `doc/ODOMETRY_PINPOINT.md` for pod offsets, directions and calibration.
+- See `ODOMETRY_PINPOINT.md` for pod offsets, directions and calibration.
 
 ## Vision & odometry
 
@@ -30,7 +30,7 @@ Two devices, split by job:
 - **Limelight 3A `limelight` (USB 3.0)** — AprilTags only. `vision/LimelightVision.java` wraps it; `StudioAprilTag.java` reads fiducials/botpose. No BioBuzz tag map is loaded yet; relocalization is deferred.
 - **Logitech webcam `webcam` (USB 2.0)** — pollen/nectar color: yellow, red, blue. `vision/PollenVision.java` runs three SDK color blobs on one portal; `vision/PollenIntakeAssist.java` drives to the best target on held A and runs `leftIntake`, `rightIntake`, `intakeWheel`.
 
-`VisionCalibration` switches between the two devices with `VIEW` (0=webcam, 1=Limelight). See `doc/VISION_BIOBUZZ.md`.
+`VisionCalibration` switches between the two devices with `VIEW` (0=webcam, 1=Limelight). See `VISION_BIOBUZZ.md`.
 
 Odometry is independent of vision: **2 odometry pods + goBILDA Pinpoint** (`pinpoint`). Neither device writes into the localizer.
 
